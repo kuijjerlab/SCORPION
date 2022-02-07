@@ -1,12 +1,12 @@
 buildKNN <- function(X,
-                            k = 5,
-                            from = c("dist", "coordinates"),
-                            use.nn2 = TRUE,
-                            return_neighbors_order = F,
-                            dist_method = "euclidean",
-                            cor_method = "pearson",
-                            p = 2,
-                            directed = FALSE)
+                     k = 5,
+                     from = c("dist", "coordinates"),
+                     use.nn2 = TRUE,
+                     return_neighbors_order = F,
+                     dist_method = "euclidean",
+                     cor_method = "pearson",
+                     p = 2,
+                     directed = FALSE)
 {
   av.methods <- c("dist", "coordinates")
   method <-  pmatch(from[1], av.methods)
@@ -73,9 +73,9 @@ buildKNN <- function(X,
             )
           )
         }
-        X <- as.dist(as.matrix(1 - cor(t(X), method = cor_method)))
+        X <- stats::as.dist(as.matrix(1 - stats::cor(t(X), method = cor_method)))
       } else {
-        X <- dist(X, method = dist_method)
+        X <- stats::dist(X, method = dist_method)
       }
     }
   } else {
@@ -85,19 +85,19 @@ buildKNN <- function(X,
         and set parameter from to coordinates"
       )
     }
-    return(knn_graph_from_dist(
+    return(buildKNND(
       D = X,
       k = k,
       return_neighbors_order = return_neighbors_order
     ))
-    }
+  }
 
 
   ### now X is distance in any case
-  return(knn_graph_from_dist(
+  return(buildKNND(
     D = X,
     k = k,
     return_neighbors_order = return_neighbors_order
   ))
 
-  }
+}
