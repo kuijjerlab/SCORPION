@@ -1,4 +1,4 @@
-runPanda <- function(motif,expr=NULL,ppi=NULL,alpha=0.1,hamming=0.001,
+runPANDA <- function(motif,expr=NULL,ppi=NULL,alpha=0.1,hamming=0.001,
                   iter=NA,output=c('regulatory','coexpression','cooperative'),
                   zScale=TRUE,progress=TRUE,randomize=c("None", "within.gene", "by.gene"), assoc.method="pearson",
                   scale.by.present=FALSE,edgelist=FALSE,remove.missing.ppi=FALSE,
