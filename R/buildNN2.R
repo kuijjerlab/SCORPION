@@ -1,3 +1,5 @@
+#' @importFrom RANN nn2
+#' @importFrom igraph graph_from_adj_list simplify
 buildNN2 <-
   function(X,
            k = min(5, ncol(X)),
