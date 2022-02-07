@@ -4,7 +4,7 @@
 \alias{scorpion}
 \title{Constructs PANDA gene regulatory networks from single-cell gene expression data}
 \usage{
-scorpion(motif = NULL, expr = NULL, ppi = NULL)
+scorpion(motif = NULL, expr, ppi = NULL)
 }
 \arguments{
 \item{motif}{TF Motif}
