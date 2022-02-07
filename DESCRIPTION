@@ -2,9 +2,10 @@ Package: SCORPION
 Type: Package
 Title: Single Cell Oriented Reconstruction of PANDA Individual Optimized Networks
 Version: 0.1.0
-Author: Authors@R: c(person("Daniel","Osorio", email = "daniecos@uio.no", role = c("aut","cre"), comment = c(ORCID = "0000-0003-4424-8422")))
+Authors@R: c(person("Daniel","Osorio", email = "daniecos@uio.no", role = c("aut","cre"), comment = c(ORCID = "0000-0003-4424-8422")))
 Description: Constructs gene regulatory networks from single-cell gene expression data using the PANDA (Passing Attributes between Networks for Data Assimilation) algorithm.
 License: GPL-3
 Encoding: UTF-8
 LazyData: true
+Imports: RSpectra, igraph, RANN, Matrix, pbapply
 RoxygenNote: 7.1.2
