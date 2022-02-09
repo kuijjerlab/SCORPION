@@ -7,5 +7,5 @@ Description: Constructs gene regulatory networks from single-cell gene expressio
 License: GPL-3
 Encoding: UTF-8
 LazyData: true
-Imports: RSpectra, igraph, RANN, Matrix, pbapply
+Imports: RSpectra, igraph, RANN, Matrix, pbapply, GSVA
 RoxygenNote: 7.1.2
