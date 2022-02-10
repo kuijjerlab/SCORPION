@@ -20,5 +20,5 @@ A named vector with the single-sample gene set enrichment score for each gene se
 Perform gene set scoring using a gene regulatory network as an input.
 }
 \author{
-Daniel Osorio <daniecos@uio.no>
+Daniel Osorio <dcosorioh@utexas.edu>
 }
