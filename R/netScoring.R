@@ -1,6 +1,6 @@
 #' @export netScoring
 #' @importFrom GSVA gsva
-#' @author Daniel Osorio <daniecos@uio.no>
+#' @author Daniel Osorio <dcosorioh@utexas.edu>
 #' @title Gene Set Network Scoring
 #' @description Perform gene set scoring using a gene regulatory network as an input.
 #' @param regNetwork A gene regulatory network with transcription factors in the rows and target genes in the columns
