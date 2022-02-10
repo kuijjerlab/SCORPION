@@ -11,7 +11,7 @@
 #' @param test The statistical test to be performed. By default uses the Wilcoxon Sum Rank Test, if more than two groups are about to be compared the Kruskal-Wallis Rank Sum Test should be used.
 #' @return A \emph{data.frame} single-sample gene set enrichment score for each gene set or the mahalinobis distance for each target gene in each network. P-values and FDR values are also provided.
 
-compareNetworkPopulations <- function(grnList, groupID, geneSets, scoringType = 'gSet', test = wilcox.test()){
+compareNetworkPopulations <- function(grnList, groupID, geneSets, scoringType = 'gSet', test = wilcox.test){
   # Getting the list of all the genes present in all networks
   geneList <- unique(unlist(lapply(grnList, colnames)))
   # Getting the score for each network
@@ -27,8 +27,8 @@ compareNetworkPopulations <- function(grnList, groupID, geneSets, scoringType = 
   }
   # Second option of return
   if (scoringType == 'gSet'){
-    eScores <- suppressWarnings(gsva(netScores, geneSets, method = 'ssgsea'))
-    gSetDiff <- apply(eScores, 1, function(g){test(g~groupID)$p.value})
+    eScores <- suppressWarnings(GSVA::gsva(netScores, geneSets, method = 'ssgsea'))
+    gSetDiff <- suppressWarnings(apply(eScores, 1, function(g){test(g~groupID)$p.value}))
     gSetDiff <- data.frame(eScores, P = gSetDiff)
     gSetDiff$FDR <- p.adjust(gSetDiff$P, method = 'fdr')
     return(gSetDiff)
