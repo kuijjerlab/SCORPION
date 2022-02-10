@@ -26,7 +26,7 @@ compareNetworkPopulations <- function(grnList, groupID, geneSets, scoringType = 
     return(gDiff)
   }
   # Second option of return
-  if (scoringType == 'gene'){
+  if (scoringType == 'gSet'){
     eScores <- suppressWarnings(gsva(netScores, geneSets, method = 'ssgsea'))
     gSetDiff <- apply(eScores, 1, function(g){test(g~groupID)$p.value})
     gSetDiff <- data.frame(eScores, P = gSetDiff)
