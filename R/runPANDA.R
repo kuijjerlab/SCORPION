@@ -64,8 +64,8 @@ runPANDA <- function(motif,expr=NULL,ppi=NULL,alpha=0.1,hamming=0.001,
       Idx=(Idx2-1)*num.TFs+Idx1;
       regulatoryNetwork[Idx]=motif[,3]
     }else if(mode=='intersection'){
-      gene.names=unique(intersect(rownames(expr),unique(motif[,2])))
-      tf.names  =unique(intersect(unique(ppi[,1]),unique(motif[,1])))
+      gene.names = rownames(expr)
+      tf.names  = unique(intersect(unique(ppi[,1]),unique(motif[,1])))
       num.TFs    <- length(tf.names)
       num.genes  <- length(gene.names)
       # gene expression matrix
