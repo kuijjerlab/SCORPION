@@ -12,7 +12,6 @@ scorpion <- function(motif = NULL,
 
   expr <- makeSuperCells(expr)
   expr <- as.matrix(expr)
-  message('PASS0')
   O <- runPANDA(motif = motif, ppi = ppi, expr = expr)
   return(O)
 }
