@@ -70,11 +70,8 @@ runPANDA <- function(motif,expr=NULL,ppi=NULL,alpha=0.1,hamming=0.001,
       num.TFs   = length(tf.names)
       num.genes  = length(gene.names)
 
-      message('PASS1')
-
       # Gene expression matrix
       expr = expr[gene.names,]
-      message('PASS2')
 
       # PPI matrix
       ppi <- ppi[ppi[,1] %in% tf.names,]
@@ -82,9 +79,10 @@ runPANDA <- function(motif,expr=NULL,ppi=NULL,alpha=0.1,hamming=0.001,
       tfCoopNetwork <- Matrix::sparseMatrix(i = as.numeric(factor(ppi[,1], tf.names)),
                                             j = as.numeric(factor(ppi[,2], tf.names)),
                                             x = ppi[,3],
+                                            dims = c(num.TFs, num.TFs),
                                             dimnames = list(tf.names, tf.names))
       tfCoopNetwork <- as.matrix(tfCoopNetwork)
-      message('PASS3')
+
 
       #Motif matrix
       motif <- motif[motif[,1] %in% tf.names,]
@@ -92,9 +90,9 @@ runPANDA <- function(motif,expr=NULL,ppi=NULL,alpha=0.1,hamming=0.001,
       regulatoryNetwork <- Matrix::sparseMatrix(i = as.numeric(factor(motif[,1], tf.names)),
                                                j = as.numeric(factor(motif[,2], gene.names)),
                                                x = motif[,3],
+                                               dims = c(num.TFs, num.genes),
                                                dimnames = list(tf.names, gene.names))
       regulatoryNetwork <- as.matrix(regulatoryNetwork)
-      message('PASS4')
     }
 
     num.conditions <- ncol(expr)
