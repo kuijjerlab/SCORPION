@@ -82,7 +82,10 @@ runPANDA <- function(motif,expr=NULL,ppi=NULL,alpha=0.1,hamming=0.001,
                                             dims = c(num.TFs, num.TFs),
                                             dimnames = list(tf.names, tf.names))
       tfCoopNetwork <- as.matrix(tfCoopNetwork)
-
+      ppi <- tfCoopNetwork[lower.tri(tfCoopNetwork)] + tfCoopNetwork[upper.tri(tfCoopNetwork)]
+      ppi[tfCoopNetwork[lower.tri(tfCoopNetwork)] == tfCoopNetwork[upper.tri(tfCoopNetwork)]] = ppi[tfCoopNetwork[lower.tri(tfCoopNetwork)] == tfCoopNetwork[upper.tri(tfCoopNetwork)]]/2
+      tfCoopNetwork[upper.tri(tfCoopNetwork)] <- ppi
+      tfCoopNetwork[lower.tri(tfCoopNetwork)] <- ppi
 
       #Motif matrix
       motif <- motif[motif[,1] %in% tf.names,]
