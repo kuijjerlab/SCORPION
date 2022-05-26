@@ -80,21 +80,21 @@ runPANDA <- function(motif,expr=NULL,ppi=NULL,alpha=0.1,hamming=0.001,
       ppi <- ppi[ppi[,1] %in% tf.names,]
       ppi <- ppi[ppi[,2] %in% tf.names,]
       tfCoopNetwork <- Matrix::sparseMatrix(i = as.numeric(factor(ppi[,1], tf.names)),
-                                            j = as.numeric(factor(ppi[,2], gene.names)),
+                                            j = as.numeric(factor(ppi[,2], tf.names)),
                                             x = ppi[,3],
-                                            dimnames = list(tf.names, gene.names))
+                                            dimnames = list(tf.names, tf.names))
       tfCoopNetwork <- as.matrix(tfCoopNetwork)
       message('PASS3')
 
       #Motif matrix
       motif <- motif[motif[,1] %in% tf.names,]
       motif <- motif[motif[,2] %in% gene.names,]
-      regulatoryNetwork = matrix(0,num.TFs,num.genes)
-      rownames(regulatoryNetwork) = tf.names
-      colnames(regulatoryNetwork) = gene.names
-      regulatoryNetwork[motif[,1], motif[,2]] <- motif[,3]
+      regulatoryNetwork <- Matrix::sparseMatrix(i = as.numeric(factor(motif[,1], tf.names)),
+                                               j = as.numeric(factor(motif[,2], gene.names)),
+                                               x = motif[,3],
+                                               dimnames = list(tf.names, gene.names))
+      regulatoryNetwork <- as.matrix(regulatoryNetwork)
       message('PASS4')
-
     }
 
     num.conditions <- ncol(expr)
