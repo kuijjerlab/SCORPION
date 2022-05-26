@@ -35,7 +35,7 @@ runPANDA <- function(motif,expr=NULL,ppi=NULL,alpha=0.1,hamming=0.001,
       # Use the motif data AND the expr data (if provided) for the gene list
       # Keep everything sorted alphabetically
       expr <- expr[order(rownames(expr)),]
-    }else if(mode=='union'){
+    } else if(mode=='union'){
       gene.names=unique(union(rownames(expr),unique(motif[,2])))
       tf.names  =unique(union(unique(ppi[,1]),unique(motif[,1])))
       num.TFs    <- length(tf.names)
@@ -63,15 +63,18 @@ runPANDA <- function(motif,expr=NULL,ppi=NULL,alpha=0.1,hamming=0.001,
       Idx2=match(motif[,2], gene.names);
       Idx=(Idx2-1)*num.TFs+Idx1;
       regulatoryNetwork[Idx]=motif[,3]
-    }else if(mode=='intersection'){
+    } else if(mode=='intersection'){
 
-      gene.names = intersect(rownames(expr), motif[,2])
-      tf.names  = intersect(unique(c(ppi[,1], ppi[,2])), motif[,1])
+      gene.names = sort(intersect(rownames(expr), motif[,2]))
+      tf.names  = sort(intersect(unique(c(ppi[,1], ppi[,2])), motif[,1]))
       num.TFs   = length(tf.names)
       num.genes  = length(gene.names)
 
+      message('PASS1')
+
       # Gene expression matrix
       expr = expr[gene.names,]
+      message('PASS2')
 
       # PPI matrix
       ppi <- ppi[ppi[,1] %in% tf.names,]
@@ -79,13 +82,17 @@ runPANDA <- function(motif,expr=NULL,ppi=NULL,alpha=0.1,hamming=0.001,
       tfCoopNetwork <- matrix(0,num.TFs,num.TFs)
       colnames(tfCoopNetwork) = rownames(tfCoopNetwork) = tf.names
       tfCoopNetwork[ppi[,1], ppi[,2]] <- ppi[,3]
+      message('PASS3')
 
       #Motif matrix
       regulatoryNetwork = matrix(0,num.TFs,num.genes)
       colnames(regulatoryNetwork) = gene.names
       rownames(regulatoryNetwork) = tf.names
       regulatoryNetwork[motif[,1], motif[,2]] <- motif[,3]
+      message('PASS4')
+
     }
+
     num.conditions <- ncol(expr)
     if (randomize=='within.gene'){
       expr <- t(apply(expr, 1, sample))
