@@ -66,7 +66,7 @@ runPANDA <- function(motif,expr=NULL,ppi=NULL,alpha=0.1,hamming=0.001,
     }else if(mode=='intersection'){
 
       gene.names = intersect(rownames(expr), motif[,2])
-      tf.names  = intersect(unique(c(ppi[,1], ppi[,2]), motif[,1]))
+      tf.names  = intersect(unique(c(ppi[,1], ppi[,2])), motif[,1])
       num.TFs   = length(tf.names)
       num.genes  = length(gene.names)
 
@@ -85,8 +85,6 @@ runPANDA <- function(motif,expr=NULL,ppi=NULL,alpha=0.1,hamming=0.001,
       colnames(regulatoryNetwork) = gene.names
       rownames(regulatoryNetwork) = tf.names
       regulatoryNetwork[motif[,1], motif[,2]] <- motif[,3]
-      message("PASS")
-
     }
     num.conditions <- ncol(expr)
     if (randomize=='within.gene'){
