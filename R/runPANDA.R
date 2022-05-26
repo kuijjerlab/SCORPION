@@ -85,6 +85,8 @@ runPANDA <- function(motif,expr=NULL,ppi=NULL,alpha=0.1,hamming=0.001,
       message('PASS3')
 
       #Motif matrix
+      motif <- motif[motif[,1] %in% tf.names,]
+      motif <- motif[motif[,2] %in% gene.names,]
       regulatoryNetwork = matrix(0,num.TFs,num.genes)
       colnames(regulatoryNetwork) = gene.names
       rownames(regulatoryNetwork) = tf.names
