@@ -57,47 +57,33 @@ runPANDA <- function(motif,expr=NULL,ppi=NULL,alpha=0.1,hamming=0.001,
       tfCoopNetwork[Idx] <- ppi[,3];
       #Motif matrix
       regulatoryNetwork=matrix(0,num.TFs,num.genes)
-      colnames(regulatoryNetwork)=gene.names
-      rownames(regulatoryNetwork)=tf.names
+      colnames(regulatoryNetwork) = gene.names
+      rownames(regulatoryNetwork) = tf.names
       Idx1=match(motif[,1], tf.names);
       Idx2=match(motif[,2], gene.names);
       Idx=(Idx2-1)*num.TFs+Idx1;
       regulatoryNetwork[Idx]=motif[,3]
     }else if(mode=='intersection'){
-      gene.names = rownames(expr)
-      tf.names  = unique(intersect(unique(ppi[,1]),unique(motif[,1])))
-      num.TFs    <- length(tf.names)
-      num.genes  <- length(gene.names)
-      # gene expression matrix
-      expr1=as.data.frame(matrix(0,num.genes,ncol(expr)))
-      rownames(expr1)=gene.names
-      interGeneNames=gene.names[which(gene.names%in%rownames(expr))]
-      expr1[interGeneNames,]=expr[interGeneNames,]
-      expr=expr1
-      #PPI matrix
+
+      gene.names = intersect(rownames(expr), motif[,2])
+      tf.names  = intersect(unique(c(ppi[,1], ppi[,2]), motif[,1])
+      num.TFs   = length(tf.names)
+      num.genes  = length(gene.names)
+      # Gene expression matrix
+      expr = expr[gene.names,]
+
+      # PPI matrix
+      ppi <- ppi[ppi[,1] %in% tf.names,]
+      ppi <- ppi[ppi[,2] %in% tf.names,]
       tfCoopNetwork <- matrix(0,num.TFs,num.TFs)
-      colnames(tfCoopNetwork)=tf.names
-      rownames(tfCoopNetwork)=tf.names
-      Idx1 <- match(ppi[,1], tf.names);
-      Idx2 <- match(ppi[,2], tf.names);
-      Idx <- (Idx2-1)*num.TFs+Idx1;
-      indIdx=!is.na(Idx)
-      Idx=Idx[indIdx] #remove missing TFs
-      tfCoopNetwork[Idx] <- ppi[indIdx,3];
-      Idx <- (Idx1-1)*num.TFs+Idx2;
-      indIdx=!is.na(Idx)
-      Idx=Idx[indIdx] #remove missing TFs
-      tfCoopNetwork[Idx] <- ppi[indIdx,3];
+      colnames(tfCoopNetwork) = rownames(tfCoopNetwork) = tf.names
+      tfCoopNetwork[ppi[,1], ppi[,2]] <- ppi[,3]
+
       #Motif matrix
-      regulatoryNetwork=matrix(0,num.TFs,num.genes)
-      colnames(regulatoryNetwork)=gene.names
-      rownames(regulatoryNetwork)=tf.names
-      Idx1=match(motif[,1], tf.names);
-      Idx2=match(motif[,2], gene.names);
-      Idx=(Idx2-1)*num.TFs+Idx1;
-      indIdx=!is.na(Idx)
-      Idx=Idx[indIdx] #remove missing genes
-      regulatoryNetwork[Idx]=motif[indIdx,3];
+      regulatoryNetwork = matrix(0,num.TFs,num.genes)
+      colnames(regulatoryNetwork) = gene.names
+      rownames(regulatoryNetwork) = tf.names
+      regulatoryNetwork[motif[,1], motif[,2]] <- motif[,3]
     }
     num.conditions <- ncol(expr)
     if (randomize=='within.gene'){
