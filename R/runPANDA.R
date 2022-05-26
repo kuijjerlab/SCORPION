@@ -85,6 +85,8 @@ runPANDA <- function(motif,expr=NULL,ppi=NULL,alpha=0.1,hamming=0.001,
       colnames(regulatoryNetwork) = gene.names
       rownames(regulatoryNetwork) = tf.names
       regulatoryNetwork[motif[,1], motif[,2]] <- motif[,3]
+      message("PASS")
+
     }
     num.conditions <- ncol(expr)
     if (randomize=='within.gene'){
