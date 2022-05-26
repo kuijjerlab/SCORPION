@@ -144,7 +144,9 @@ runPANDA <- function(motif,expr=NULL,ppi=NULL,alpha=0.1,hamming=0.001,
       if(assoc.method == 'pcr'){
         geneCoreg <- as.matrix(pcNet(expr))
       } else {
-        geneCoreg <- cor(t(expr), method=assoc.method, use="pairwise.complete.obs")
+        geneCoreg <- expr - rowMeans(expr)
+        geneCoreg <- geneCoreg/sqrt(rowSums(geneCoreg^2))
+        geneCoreg <- tcrossprod(geneCoreg)
       }
     }
     if(progress)
