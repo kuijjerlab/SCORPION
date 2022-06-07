@@ -8,10 +8,11 @@
 #' @return A list
 scorpion <- function(motif = NULL,
                      expr,
-                     ppi = NULL) {
+                     ppi = NULL,
+                     nCores = 1) {
 
   expr <- makeSuperCells(expr)
   expr <- as.matrix(expr)
-  O <- runPANDA(motif = motif, ppi = ppi, expr = expr)
+  O <- runPANDA(motif = motif, ppi = ppi, expr = expr, n.cores = nCores)
   return(O)
 }

@@ -1,10 +1,10 @@
-runPANDA <- function(motif,expr=NULL,ppi=NULL,alpha=0.1,hamming=0.001, nCores = 1,
+runPANDA <- function(motif,expr=NULL,ppi=NULL,alpha=0.1,hamming=0.001, n.cores = 1,
                   iter=NA,output=c('regulatory','coexpression','cooperative'),
                   zScale=TRUE,progress=TRUE,randomize=c("None", "within.gene", "by.gene"), assoc.method="pearson",
                   scale.by.present=FALSE,edgelist=FALSE,remove.missing.ppi=FALSE,
                   remove.missing.motif=FALSE,remove.missing.genes=FALSE,mode="intersection"){
-  RhpcBLASctl::omp_set_num_threads(nCores)
-  RhpcBLASctl::blas_set_num_threads(nCores)
+  RhpcBLASctl::omp_set_num_threads(n.cores)
+  RhpcBLASctl::blas_set_num_threads(n.cores)
   randomize <- match.arg(randomize)
   if(progress)
     print('Initializing and validating')
