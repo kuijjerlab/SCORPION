@@ -1,5 +1,5 @@
 #' @importFrom stats aggregate as.dist cor median prcomp sd var
-#' @importFrom RSpectra svds
+#' @importFrom irlba irlba
 #' @importFrom igraph cluster_walktrap cut_at cluster_louvain contract simplify
 #' @import Matrix
 makeSuperCells <- function(X,
@@ -115,7 +115,7 @@ makeSuperCells <- function(X,
     n.pc <- 1:n.pc
 
   if (fast.pca & (N.c < 1000)) {
-    warning("Normal PCA is computed because number of cell is low for RSpectra::svds()")
+    warning("Normal PCA is computed because number of cell is low for irlba::irlba()")
     fast.pca <- FALSE
   }
 
@@ -129,7 +129,7 @@ makeSuperCells <- function(X,
       )
   } else {
     PCA.presampled          <-
-      RSpectra::svds(X.for.pca, max(n.pc, 25))
+      irlba::irlba(X.for.pca, max(n.pc, 25))
     PCA.presampled$x        <-
       PCA.presampled$u %*% diag(PCA.presampled$d)
     PCA.presampled$rotation <- PCA.presampled$v
