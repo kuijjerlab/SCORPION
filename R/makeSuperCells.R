@@ -129,7 +129,7 @@ makeSuperCells <- function(X,
       )
   } else {
     PCA.presampled          <-
-      svd(X.for.pca)
+      irlba::irlba(X.for.pca, n.pc, work = 1)
     PCA.presampled$x        <-
       PCA.presampled$u %*% diag(PCA.presampled$d)
     PCA.presampled$rotation <- PCA.presampled$v
