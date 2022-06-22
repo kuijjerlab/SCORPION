@@ -4,20 +4,60 @@
 \alias{scorpion}
 \title{Constructs PANDA gene regulatory networks from single-cell gene expression data}
 \usage{
-scorpion(motif = NULL, expr, ppi = NULL, nCores = 1)
+scorpion(
+  tfMotifs = NULL,
+  gexMatrix,
+  ppiNet = NULL,
+  nCores = 1,
+  gammaValue = 10,
+  assocMethod = "pearson",
+  alphaValue = 0.1,
+  hammingValue = 0.001,
+  nIter = Inf,
+  outNet = c("regulatory", "coregulatory", "cooperative"),
+  zScaling = TRUE,
+  showProgress = TRUE,
+  randomizationMethod = "None",
+  scaleByPresent = FALSE,
+  edgeList = FALSE
+)
 }
 \arguments{
-\item{motif}{TF Motif}
+\item{tfMotifs}{A motif dataset, a data.frame or a matrix containing 3 columns. Each row describes an motif associated with a transcription factor (column 1) a gene (column 2) and a score (column 3) for the motif.}
 
-\item{expr}{Single-cell Expression Data}
+\item{gexMatrix}{An expression dataset, with genes in the rows and barcodes (cells) in the columns.}
 
-\item{ppi}{PPI}
+\item{ppiNet}{A Protein-Protein-Interaction dataset, a data.frame or matrix containing 3 columns. Each row describes a protein-protein interaction between transcription factor 1(column 1), transcription factor 2 (column 2) and a score (column 3) for the interaction.}
+
+\item{nCores}{Number of processors to be used if BLAS or MPI is active.}
+
+\item{gammaValue}{Graining level of data (proportion of number of single cells in the initial dataset to the number of super-cells in the final dataset)}
+
+\item{assocMethod}{Association method. Must be one of 'pearson', 'spearman' or 'pcNet'.}
+
+\item{alphaValue}{Value to be used for update variable.}
+
+\item{hammingValue}{Value at which to terminate the process based on Hamming distance.}
+
+\item{nIter}{Sets the maximum number of iterations PANDA can run before exiting.}
+
+\item{outNet}{A vector containing which networks to return. Options include "regulatory", "coregulatory", "cooperative".}
+
+\item{zScaling}{Boolean to indicate use of Z-Scores in output. False will use [0,1] scale.}
+
+\item{showProgress}{Boolean to indicate printing of output for algorithm progress.}
+
+\item{randomizationMethod}{Method by which to randomize gene expression matrix. Default "None". Must be one of "None", "within.gene", "by.genes". "within.gene" randomization scrambles each row of the gene expression matrix, "by.gene" scrambles gene labels.}
+
+\item{scaleByPresent}{Boolean to indicate scaling of correlations by percentage of positive samples}
+
+\item{edgeList}{Boolean to indicate if edge lists instead of matrices should be returned.}
 }
 \value{
-A list
+A list of matrices describing networks achieved by convergence with PANDA algorithm.
 }
 \description{
-Constructs gene regulatory networks from single-cell gene expression data using the PANDA (Passing Attributes between Networks for Data Assimilation) algorithm
+Constructs gene regulatory networks from single-cell gene expression data using the PANDA (Passing Attributes between Networks for Data Assimilation) algorithm.
 }
 \author{
 Daniel Osorio <daniecos@uio.no>
