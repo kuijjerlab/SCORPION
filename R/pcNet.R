@@ -4,7 +4,7 @@ pcNet <- function(X,
                   scaleScores = TRUE,
                   symmetric = FALSE,
                   q = 0, verbose = TRUE,
-                  nCores = parallel::detectCores()) {
+                  nCores = 1) {
   if (!all(Matrix::rowSums(X) > 0)) {
     stop('Quality control has not been applied over the matrix.')
   }
@@ -23,7 +23,7 @@ pcNet <- function(X,
     Xi <- X
     Xi <- Xi[, -K]
     # Step 1: Perform PCA on the observed covariates data matrix to obtain $n$ number of the principal components.
-    coeff <- RSpectra::svds(Xi, nComp)$v
+    coeff <- irlba::irlba(Xi, nComp)$v
     score <- Xi %*% coeff
     # Step 2: Regress the observed vector of outcomes on the selected principal components as covariates, using ordinary least squares regression to get a vector of estimated regression coefficients.
     score <-
