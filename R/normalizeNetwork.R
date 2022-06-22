@@ -1,5 +1,4 @@
 normalizeNetwork <- function(X) {
-  X <- as.matrix(X)
 
   nr = nrow(X)
   nc = ncol(X)
@@ -34,18 +33,5 @@ normalizeNetwork <- function(X) {
   # combine and return
   normMat = Z1 / sqrt(2) + Z2 / sqrt(2)
 
-  # checks and defaults for missing data
-  Z0 = (X - mu0) / std0
-
-  f1 = is.na(Z1)
-  f2 = is.na(Z2)
-
-  normMat[f1] = Z2[f1] / sqrt(2) + Z0[f1] / sqrt(2)
-
-  normMat[f2] = Z1[f2] / sqrt(2) + Z0[f2] / sqrt(2)
-
-  normMat[f1 & f2] = 2 * Z0[f1 & f2] / sqrt(2)
-
-
-  normMat
+  return(normMat)
 }
