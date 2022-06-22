@@ -1,4 +1,4 @@
-runPANDA <- function(motif,expr=NULL,ppi=NULL,alpha=0.1,hamming=0.001, n.cores = 1,
+runPANDA <- function(motif = NULL,expr=NULL,ppi=NULL,alpha=0.1,hamming=0.001, n.cores = 1,
                   iter=NA,output=c('regulatory','coexpression','cooperative'),
                   zScale=TRUE,progress=TRUE,randomize=c("None", "within.gene", "by.gene"), assoc.method="pearson",
                   scale.by.present=FALSE,edgelist=FALSE,remove.missing.ppi=FALSE,
@@ -8,9 +8,6 @@ runPANDA <- function(motif,expr=NULL,ppi=NULL,alpha=0.1,hamming=0.001, n.cores =
   randomize <- match.arg(randomize)
   if(progress)
     print('Initializing and validating')
-#
-#   if(class(expr)=="ExpressionSet")
-#     expr <- assayData(expr)[["exprs"]]
 
   if (is.null(expr)){
     # Use only the motif data here for the gene list
