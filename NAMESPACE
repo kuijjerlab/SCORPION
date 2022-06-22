@@ -2,6 +2,7 @@
 
 export(scorpion)
 import(Matrix)
+importFrom(Matrix,Matrix)
 importFrom(RANN,nn2)
 importFrom(igraph,cluster_louvain)
 importFrom(igraph,cluster_walktrap)
