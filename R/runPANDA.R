@@ -3,8 +3,7 @@ runPANDA <- function(motif = NULL,expr=NULL,ppi=NULL,alpha=0.1,hamming=0.001, n.
                   zScale=TRUE,progress=TRUE,randomize=c("None", "within.gene", "by.gene"), assoc.method="pearson",
                   scale.by.present=FALSE,edgelist=FALSE,remove.missing.ppi=FALSE,
                   remove.missing.motif=FALSE,remove.missing.genes=FALSE,mode="intersection"){
-  RhpcBLASctl::omp_set_num_threads(n.cores)
-  RhpcBLASctl::blas_set_num_threads(n.cores)
+
   randomize <- match.arg(randomize)
   if(progress)
     print('Initializing and validating')
@@ -62,7 +61,6 @@ runPANDA <- function(motif = NULL,expr=NULL,ppi=NULL,alpha=0.1,hamming=0.001, n.
       Idx=(Idx2-1)*num.TFs+Idx1;
       regulatoryNetwork[Idx]=motif[,3]
     } else if(mode=='intersection'){
-
       gene.names = sort(intersect(rownames(expr), motif[,2]))
       tf.names  = sort(intersect(unique(c(ppi[,1], ppi[,2])), motif[,1]))
       num.TFs   = length(tf.names)
@@ -84,6 +82,7 @@ runPANDA <- function(motif = NULL,expr=NULL,ppi=NULL,alpha=0.1,hamming=0.001, n.
       ppi[tfCoopNetwork[lower.tri(tfCoopNetwork)] == tfCoopNetwork[upper.tri(tfCoopNetwork)]] = ppi[tfCoopNetwork[lower.tri(tfCoopNetwork)] == tfCoopNetwork[upper.tri(tfCoopNetwork)]]/2
       tfCoopNetwork[upper.tri(tfCoopNetwork)] <- ppi
       tfCoopNetwork[lower.tri(tfCoopNetwork)] <- ppi
+      tfCoopNetwork <- Matrix(tfCoopNetwork)
 
       #Motif matrix
       motif <- motif[motif[,1] %in% tf.names,]
@@ -93,7 +92,6 @@ runPANDA <- function(motif = NULL,expr=NULL,ppi=NULL,alpha=0.1,hamming=0.001, n.
                                                x = motif[,3],
                                                dims = c(num.TFs, num.genes),
                                                dimnames = list(tf.names, gene.names))
-      regulatoryNetwork <- as.matrix(regulatoryNetwork)
     }
 
     num.conditions <- ncol(expr)
@@ -129,7 +127,6 @@ runPANDA <- function(motif = NULL,expr=NULL,ppi=NULL,alpha=0.1,hamming=0.001, n.
     warning('Not enough expression conditions detected to calculate correlation. Co-regulation network will be initialized to an identity matrix.')
     geneCoreg <- diag(num.genes)
   } else {
-
     if(scale.by.present){
       num.positive=(expr>0)%*%t((expr>0))
       if(assoc.method == 'pcr'){
@@ -142,6 +139,9 @@ runPANDA <- function(motif = NULL,expr=NULL,ppi=NULL,alpha=0.1,hamming=0.001, n.
       if(assoc.method == 'pcr'){
         geneCoreg <- as.matrix(pcNet(expr))
       } else {
+        if(assoc.method == 'spearman'){
+          geneCoreg <- Matrix(t(apply(expr,1,rank)))
+        }
         geneCoreg <- expr - rowMeans(expr)
         geneCoreg <- geneCoreg/sqrt(rowSums(geneCoreg^2))
         geneCoreg <- tcrossprod(geneCoreg)
@@ -150,49 +150,14 @@ runPANDA <- function(motif = NULL,expr=NULL,ppi=NULL,alpha=0.1,hamming=0.001, n.
     if(progress)
       print('Verified sufficient samples')
   }
-  if (any(is.na(geneCoreg))){ #check for NA and replace them by zero
+  if (any(is.na(geneCoreg@x))){ #check for NA and replace them by zero
     diag(geneCoreg)=1
-    geneCoreg[is.na(geneCoreg)]=0
+    geneCoreg@x[is.na(geneCoreg@x)]=0
   }
 
   if (any(duplicated(motif))) {
     warning("Duplicate edges have been found in the motif data. Weights will be summed.")
     motif <- aggregate(motif[,3], by=list(motif[,1], motif[,2]), FUN=sum)
-  }
-
-  # Prior Regulatory Network
-  if(mode=='legacy'){
-    Idx1=match(motif[,1], tf.names);
-    Idx2=match(motif[,2], gene.names);
-    Idx=(Idx2-1)*num.TFs+Idx1;
-    regulatoryNetwork=matrix(data=0, num.TFs, num.genes);
-    regulatoryNetwork[Idx]=motif[,3]
-    colnames(regulatoryNetwork) <- gene.names
-    rownames(regulatoryNetwork) <- tf.names
-    # PPI data
-    # If no ppi data is given, we use the identity matrix
-    tfCoopNetwork <- diag(num.TFs)
-    # Else we convert our two-column data.frame to a matrix
-    if (!is.null(ppi)){
-      if(any(duplicated(ppi))){
-        warning("Duplicate edges have been found in the PPI data. Weights will be summed.")
-        ppi <- aggregate(ppi[,3], by=list(ppi[,1], ppi[,2]), FUN=sum)
-      }
-      if(remove.missing.ppi){
-        # remove edges in the PPI data that target TFs not in the motif
-        n <- nrow(ppi)
-        ppi <- ppi[which(ppi[,1]%in%tf.names & ppi[,2]%in%tf.names),]
-        message(sprintf("%s PPI edges removed that were not present in motif", n-nrow(ppi)))
-      }
-      Idx1 <- match(ppi[,1], tf.names);
-      Idx2 <- match(ppi[,2], tf.names);
-      Idx <- (Idx2-1)*num.TFs+Idx1;
-      tfCoopNetwork[Idx] <- ppi[,3];
-      Idx <- (Idx1-1)*num.TFs+Idx2;
-      tfCoopNetwork[Idx] <- ppi[,3];
-    }
-    colnames(tfCoopNetwork) <- tf.names
-    rownames(tfCoopNetwork) <- tf.names
   }
 
   ## Run PANDA ##
@@ -233,8 +198,8 @@ runPANDA <- function(motif = NULL,expr=NULL,ppi=NULL,alpha=0.1,hamming=0.001, n.
     geneCoreg=minusAlpha*geneCoreg + alpha*CoReg2
 
     if(progress)
-      message("Iteration", step,": hamming distance =", round(hamming_cur,5))
-    step=step+1
+      message("Iteration ", step,": hamming distance = ", round(hamming_cur,5))
+      step=step+1
   }
 
   toc=proc.time()[3] - tic
