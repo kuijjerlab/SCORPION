@@ -10,6 +10,7 @@ scorpion(
   ppiNet = NULL,
   nCores = 1,
   gammaValue = 10,
+  nPC = 25,
   assocMethod = "pearson",
   alphaValue = 0.1,
   hammingValue = 0.001,
@@ -18,8 +19,7 @@ scorpion(
   zScaling = TRUE,
   showProgress = TRUE,
   randomizationMethod = "None",
-  scaleByPresent = FALSE,
-  edgeList = FALSE
+  scaleByPresent = FALSE
 )
 }
 \arguments{
@@ -32,6 +32,8 @@ scorpion(
 \item{nCores}{Number of processors to be used if BLAS or MPI is active.}
 
 \item{gammaValue}{Graining level of data (proportion of number of single cells in the initial dataset to the number of super-cells in the final dataset)}
+
+\item{nPC}{Number of principal components to use for construction of single-cell kNN network.}
 
 \item{assocMethod}{Association method. Must be one of 'pearson', 'spearman' or 'pcNet'.}
 
@@ -50,8 +52,6 @@ scorpion(
 \item{randomizationMethod}{Method by which to randomize gene expression matrix. Default "None". Must be one of "None", "within.gene", "by.genes". "within.gene" randomization scrambles each row of the gene expression matrix, "by.gene" scrambles gene labels.}
 
 \item{scaleByPresent}{Boolean to indicate scaling of correlations by percentage of positive samples}
-
-\item{edgeList}{Boolean to indicate if edge lists instead of matrices should be returned.}
 }
 \value{
 A list of matrices describing networks achieved by convergence with PANDA algorithm.
