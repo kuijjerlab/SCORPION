@@ -119,7 +119,7 @@ makeSuperCells <- function(X,
     n.pc <- 1:n.pc
 
   if (fast.pca & (N.c < 1000)) {
-    warning("Normal PCA is computed because number of cell is low for irlba::irlba()")
+    #warning("Normal PCA is computed because number of cell is low for irlba::irlba()")
     fast.pca <- FALSE
   }
 
@@ -133,7 +133,7 @@ makeSuperCells <- function(X,
       )
   } else {
     PCA.presampled          <-
-      irlba::irlba(X.for.pca, n.pc, work = 1)
+      irlba::irlba(X.for.pca, n.pc)
     PCA.presampled$x        <-
       PCA.presampled$u %*% diag(PCA.presampled$d)
     PCA.presampled$rotation <- PCA.presampled$v
