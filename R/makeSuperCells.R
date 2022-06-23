@@ -21,13 +21,9 @@ makeSuperCells <- function(X,
                            return.hierarchical.structure = TRUE,
                            block.size = 10000,
                            weights = NULL,
-                           do.median.norm = FALSE,
-                           n.cores = 1) {
+                           do.median.norm = FALSE) {
   N.c <- ncol(X)
   GE <- X
-
-  RhpcBLASctl::omp_set_num_threads(n.cores)
-  RhpcBLASctl::blas_set_num_threads(n.cores)
 
   if (is.null(rownames(X))) {
     if (!(is.null(genes.use) | is.null(genes.exclude))) {
