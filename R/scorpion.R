@@ -8,6 +8,7 @@
 #' @param ppiNet A Protein-Protein-Interaction dataset, a data.frame or matrix containing 3 columns. Each row describes a protein-protein interaction between transcription factor 1(column 1), transcription factor 2 (column 2) and a score (column 3) for the interaction.
 #' @param nCores Number of processors to be used if BLAS or MPI is active.
 #' @param gammaValue Graining level of data (proportion of number of single cells in the initial dataset to the number of super-cells in the final dataset)
+#' @param nPC Number of principal components to use for construction of single-cell kNN network.
 #' @param alphaValue Value to be used for update variable.
 #' @param hammingValue Value at which to terminate the process based on Hamming distance.
 #' @param assocMethod Association method. Must be one of 'pearson', 'spearman' or 'pcNet'.
@@ -17,7 +18,6 @@
 #' @param showProgress Boolean to indicate printing of output for algorithm progress.
 #' @param randomizationMethod Method by which to randomize gene expression matrix. Default "None". Must be one of "None", "within.gene", "by.genes". "within.gene" randomization scrambles each row of the gene expression matrix, "by.gene" scrambles gene labels.
 #' @param scaleByPresent Boolean to indicate scaling of correlations by percentage of positive samples
-#' @param edgeList Boolean to indicate if edge lists instead of matrices should be returned.
 #' @return A list of matrices describing networks achieved by convergence with PANDA algorithm.
 
 scorpion <- function(tfMotifs = NULL,
@@ -25,6 +25,7 @@ scorpion <- function(tfMotifs = NULL,
                      ppiNet = NULL,
                      nCores = 1,
                      gammaValue = 10,
+                     nPC = 25,
                      assocMethod = 'pearson',
                      alphaValue = 0.1,
                      hammingValue = 0.001,
@@ -33,11 +34,9 @@ scorpion <- function(tfMotifs = NULL,
                      zScaling = TRUE,
                      showProgress = TRUE,
                      randomizationMethod = 'None',
-                     scaleByPresent = FALSE,
-                     edgeList = FALSE
-) {
+                     scaleByPresent = FALSE) {
   gexMatrix <- gexMatrix[rowSums(gexMatrix) > 0,]
-  gexMatrix <- makeSuperCells(X = gexMatrix, gamma = gammaValue, n.cores = nCores)
+  gexMatrix <- makeSuperCells(X = gexMatrix, gamma = gammaValue, n.pc = nPC,  n.cores = nCores)
 
   if(is.null(ppiNet) & is.null(tfMotifs)){
     if(assocMethod == 'spearman'){
@@ -60,7 +59,6 @@ scorpion <- function(tfMotifs = NULL,
                           progress = showProgress ,
                           randomize = randomizationMethod ,
                           assoc.method = assocMethod,
-                          scale.by.present = scaleByPresent,
-                          edgelist = edgeList)
+                          scale.by.present = scaleByPresent)
   return(outNetworks)
 }
