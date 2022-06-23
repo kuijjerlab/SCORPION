@@ -33,5 +33,14 @@ normalizeNetwork <- function(X) {
   # combine and return
   normMat = Z1 / sqrt(2) + Z2 / sqrt(2)
 
+  Z0=(X-mu0)/std0;
+  f1=is.na(Z1@x)
+  f2=is.na(Z2@x);
+
+
+  normMat@x[f1]=Z2@x[f1]/sqrt(2)+Z0@x[f1]/sqrt(2);
+  normMat@x[f2]=Z1@x[f2]/sqrt(2)+Z0@x[f2]/sqrt(2);
+  normMat@x[f1 & f2]=2*Z0@x[f1 & f2]/sqrt(2);
+
   return(normMat)
 }
