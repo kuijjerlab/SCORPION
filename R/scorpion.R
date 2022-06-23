@@ -36,7 +36,7 @@ scorpion <- function(tfMotifs = NULL,
                      randomizationMethod = 'None',
                      scaleByPresent = FALSE) {
   gexMatrix <- gexMatrix[rowSums(gexMatrix) > 0,]
-  gexMatrix <- makeSuperCells(X = gexMatrix, gamma = gammaValue, n.pc = nPC,  n.cores = nCores)
+  gexMatrix <- makeSuperCells(X = gexMatrix, gamma = gammaValue, n.pc = nPC, n.cores = nCores, fast.pca = FALSE)
 
   if(is.null(ppiNet) & is.null(tfMotifs)){
     if(assocMethod == 'spearman'){
