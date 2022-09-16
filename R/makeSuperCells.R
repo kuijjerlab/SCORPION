@@ -1,5 +1,5 @@
 #' @importFrom stats aggregate as.dist cor median prcomp sd var
-#' @importFrom RSpectra svds
+#' @importFrom irlba irlba
 #' @importFrom igraph cluster_walktrap cut_at cluster_louvain contract simplify
 #' @import Matrix
 makeSuperCells <- function(X,
@@ -129,7 +129,7 @@ makeSuperCells <- function(X,
       )
   } else {
     PCA.presampled          <-
-      RSpectra::svds(X.for.pca, n.pc)
+      irlba::irlba(X.for.pca, n.pc)
     PCA.presampled$x        <-
       PCA.presampled$u %*% diag(PCA.presampled$d)
     PCA.presampled$rotation <- PCA.presampled$v
