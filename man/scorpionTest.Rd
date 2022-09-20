@@ -16,7 +16,7 @@ A list containing three datasets.
 data(scorpionTest)
 }
 \description{
-This data is a list containing three objects. The motif \code{data.frame} describes a set of pairwise connections where a specific known sequence motif of a transcription factor was found upstream of the corresponding gene. The expression data.frame is a set of 230 gene expression levels measured across 80 cells. Finally, the ppi data.frame describes a set of known pairwise protein-protein interactions.
+This data is a list containing three objects. The motif \code{data.frame} describes a set of pairwise connections where a specific known sequence motif of a transcription factor was found upstream of the corresponding gene. The expression \code{dgCMatrix} is a set of 230 gene expression levels measured across 80 cells. Finally, the ppi \code{data.frame} describes a set of known pairwise protein-protein interactions.
 }
 \examples{
 # Loading example data
