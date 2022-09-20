@@ -1,7 +1,7 @@
 #' @name scorpionTest
 #' @docType data
 #' @title Example single-cell gene expression, motif, and ppi data
-#' @description This data is a list containing three objects. The motif \code{data.frame} describes a set of pairwise connections where a specific known sequence motif of a transcription factor was found upstream of the corresponding gene. The expression data.frame is a set of 230 gene expression levels measured across 80 cells. Finally, the ppi data.frame describes a set of known pairwise protein-protein interactions.
+#' @description This data is a list containing three objects. The motif \code{data.frame} describes a set of pairwise connections where a specific known sequence motif of a transcription factor was found upstream of the corresponding gene. The expression \code{dgCMatrix} is a set of 230 gene expression levels measured across 80 cells. Finally, the ppi \code{data.frame} describes a set of known pairwise protein-protein interactions.
 #' @usage data(scorpionTest)
 #' @format A list containing three datasets.
 #' \describe{
