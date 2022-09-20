@@ -204,6 +204,6 @@ runPANDA <- function(motif = NULL,expr=NULL,ppi=NULL,alpha=0.1,hamming=0.001, n.
 
   toc=proc.time()[3] - tic
   if(progress)
-    message("Successfully ran PANDA on ", num.genes, " Genes and ", num.TFs, " TFs.\nTime elapsed:", round(toc,2), "seconds.")
+    message("Successfully ran SCORPION on ", num.genes, " Genes and ", num.TFs, " TFs.\nTime elapsed:", round(toc,2), "seconds.")
   prepResult(zScale, output, regulatoryNetwork, geneCoreg, tfCoopNetwork, edgelist, motif)
 }
