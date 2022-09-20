@@ -52,12 +52,12 @@
 #'                            alphaValue = 0.8)
 #'
 #' # -- SCORPION --------------------------------------------------------------------------------------
-#' # √ Initializing and validating
-#' # √ Verified sufficient samples
+#' # + Initializing and validating
+#' # + Verified sufficient samples
 #' # i Normalizing networks
 #' # i Learning Network
 #' # i Using tanimoto similarity
-#' # √ Successfully ran SCORPION on 214 Genes and 783 TFs
+#' # + Successfully ran SCORPION on 214 Genes and 783 TFs
 #'
 #' # Structure of the output.
 #' str(scorpionOutput)
