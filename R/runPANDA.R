@@ -1,3 +1,4 @@
+#' @import cli
 runPANDA <- function(motif = NULL,expr=NULL,ppi=NULL,alpha=0.1,hamming=0.001, n.cores = 1,
                   iter=NA,output=c('regulatory','coexpression','cooperative'),
                   zScale=TRUE,progress=TRUE,randomize=c("None", "within.gene", "by.gene"), assoc.method="pearson",
@@ -6,13 +7,13 @@ runPANDA <- function(motif = NULL,expr=NULL,ppi=NULL,alpha=0.1,hamming=0.001, n.
 
   randomize <- match.arg(randomize)
   if(progress)
-    print('Initializing and validating')
+    cli::cli_alert_success('Initializing and validating')
 
   if (is.null(expr)){
     # Use only the motif data here for the gene list
     num.conditions <- 0
     if (randomize!="None"){
-      warning("Randomization ignored because gene expression is not used.")
+      cli::cli_alert_danger("Randomization ignored because gene expression is not used.")
       randomize <- "None"
     }
   } else {
@@ -21,13 +22,13 @@ runPANDA <- function(motif = NULL,expr=NULL,ppi=NULL,alpha=0.1,hamming=0.001, n.
         # remove genes from expression data that are not in the motif data
         n <- nrow(expr)
         expr <- expr[which(rownames(expr)%in%motif[,2]),]
-        message(sprintf("%s genes removed that were not present in motif", n-nrow(expr)))
+        cli::cli_alert_danger(sprintf("%s genes removed that were not present in motif", n-nrow(expr)))
       }
       if(remove.missing.motif){
         # remove genes from motif data that are not in the expression data
         n <- nrow(motif)
         motif <- motif[which(motif[,2]%in%rownames(expr)),]
-        message(sprintf("%s motif edges removed that targeted genes missing in expression data", n-nrow(motif)))
+        cli::cli_alert_danger(sprintf("%s motif edges removed that targeted genes missing in expression data", n-nrow(motif)))
       }
       # Use the motif data AND the expr data (if provided) for the gene list
       # Keep everything sorted alphabetically
@@ -98,12 +99,12 @@ runPANDA <- function(motif = NULL,expr=NULL,ppi=NULL,alpha=0.1,hamming=0.001, n.
     if (randomize=='within.gene'){
       expr <- t(apply(expr, 1, sample))
       if(progress)
-        print("Randomizing by reordering each gene's expression")
+        cli::cli_alert_info("Randomizing by reordering each gene's expression")
     } else if (randomize=='by.gene'){
       rownames(expr) <- sample(rownames(expr))
       expr           <- expr[order(rownames(expr)),]
       if(progress)
-        print("Randomizing by reordering each gene labels")
+        cli::cli_alert_info("Randomizing by reordering each gene labels")
     }
   }
 
@@ -117,14 +118,16 @@ runPANDA <- function(motif = NULL,expr=NULL,ppi=NULL,alpha=0.1,hamming=0.001, n.
 
   # Bad data checking
   if (num.genes==0){
-    stop("Error validating data.  No matched genes.\n  Please ensure that gene names in expression data match gene names in motif data")
+    cli::cli_alert_danger("Error validating data.  No matched genes")
+    cli::cli_abort("Please ensure that gene names in expression data match gene names in motif data")
+
   }
 
   if(num.conditions==0) {
-    warning('No expression data given.  PANDA will run based on an identity co-regulation matrix')
+    cli::cli_alert_warning('No expression data given.  PANDA will run based on an identity co-regulation matrix')
     geneCoreg <- diag(num.genes)
   } else if(num.conditions<3) {
-    warning('Not enough expression conditions detected to calculate correlation. Co-regulation network will be initialized to an identity matrix.')
+    cli::cli_alert_warning('Not enough expression conditions detected to calculate correlation. Co-regulation network will be initialized to an identity matrix.')
     geneCoreg <- diag(num.genes)
   } else {
     if(scale.by.present){
@@ -148,7 +151,7 @@ runPANDA <- function(motif = NULL,expr=NULL,ppi=NULL,alpha=0.1,hamming=0.001, n.
       }
     }
     if(progress)
-      print('Verified sufficient samples')
+      cli::cli_alert_success('Verified sufficient samples')
   }
   if (any(is.na(geneCoreg@x))){ #check for NA and replace them by zero
     diag(geneCoreg)=1
@@ -156,7 +159,7 @@ runPANDA <- function(motif = NULL,expr=NULL,ppi=NULL,alpha=0.1,hamming=0.001, n.
   }
 
   if (any(duplicated(motif))) {
-    warning("Duplicate edges have been found in the motif data. Weights will be summed.")
+    cli::cli_alert_warning("Duplicate edges have been found in the motif data. Weights will be summed.")
     motif <- aggregate(motif[,3], by=list(motif[,1], motif[,2]), FUN=sum)
   }
 
@@ -164,22 +167,23 @@ runPANDA <- function(motif = NULL,expr=NULL,ppi=NULL,alpha=0.1,hamming=0.001, n.
   tic=proc.time()[3]
 
   if(progress)
-    print('Normalizing networks...')
+    cli::cli_alert_info('Normalizing networks')
   regulatoryNetwork = normalizeNetwork(regulatoryNetwork)
   tfCoopNetwork     = normalizeNetwork(tfCoopNetwork)
   geneCoreg         = normalizeNetwork(geneCoreg)
 
   if(progress)
-    print('Learning Network...')
+    cli::cli_alert_info('Learning Network')
 
   minusAlpha = 1-alpha
   step=0
   hamming_cur=1
   if(progress)
-    print("Using tanimoto similarity")
+    cli::cli_alert_info("Using tanimoto similarity")
+    cli::cli_progress_bar("Assimilating data", type = 'iterator')
   while(hamming_cur>hamming){
     if ((!is.na(iter))&&step>=iter){
-      print(paste("Reached maximum iterations, iter =",iter),sep="")
+      cli::cli_alert_warning(paste0("Reached maximum iterations, iter =",iter))
       break
     }
     Responsibility=tanimoto(tfCoopNetwork, regulatoryNetwork)
@@ -198,12 +202,17 @@ runPANDA <- function(motif = NULL,expr=NULL,ppi=NULL,alpha=0.1,hamming=0.001, n.
     geneCoreg=minusAlpha*geneCoreg + alpha*CoReg2
 
     if(progress)
-      message("Iteration ", step,": hamming distance = ", round(hamming_cur,5))
-      step=step+1
+      #message("Iteration ", step,": hamming distance = ", round(hamming_cur,5))
+
+    cli::cli_progress_message(paste0("Iteration ", step,": hamming distance = ", round(hamming_cur,5)))
+    step=step+1
   }
 
   toc=proc.time()[3] - tic
   if(progress)
-    message("Successfully ran SCORPION on ", num.genes, " Genes and ", num.TFs, " TFs.\nTime elapsed:", round(toc,2), "seconds.")
+    cli::cli_alert_success(paste0("Successfully ran SCORPION on ", num.genes, " Genes and ", num.TFs, " TFs"))
+    cli::cli_alert_info(paste0("Time elapsed: ", round(toc,2), " seconds"))
+
   prepResult(zScale, output, regulatoryNetwork, geneCoreg, tfCoopNetwork, edgelist, motif)
+  cli::cli_end()
 }
