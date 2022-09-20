@@ -1,11 +1,12 @@
+#' @importFrom methods is
 buildKNND <- function(D, k = 5, return_neighbors_order = T, mode = 'all'){
 
   ##print("Start knn_graph_from_dist")
-  if(!is.matrix(D) & class(D) != "dist"){
+  if(!is(D, 'matrix') | !is(D, 'dist')){
     stop("D (X) mast be a matrix or dist!")
   }
 
-  if(class(D) != "dist"){
+  if(!is(D, 'dist')){
     D <- as.dist(D)
   }
 
