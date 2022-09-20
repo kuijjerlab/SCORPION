@@ -12,7 +12,7 @@ install_github('kuijjerlab/SCORPION')
 library(SCORPION)
 ```
 ## Example
-1 - **Loading example data.** This dataset is a list containing three objects. The motif ```data.frame``` describes a set of pairwise connections where a specific known sequence motif of a transcription factor was found upstream of the corresponding gene. For this particular example, the data is a subset of the transcription-factor and target gene pairs provided by the ```dorothea``` package for *Homo sapiens*.  The expression ```dgCMatrix``` is a set of 230 gene expression levels measured across 80 cells provided by the ```Seurat``` package as ```pbmc_small```. Finally, the ppi ```data.frame``` describes a set of known pairwise protein-protein interactions.
+1 - **Loading example data.** This dataset is a list containing three objects. The motif ```data.frame``` describes a set of pairwise connections where a specific known sequence motif of a transcription factor was found upstream of the corresponding gene. For this particular example, the data is a subset of the transcription-factor and target gene pairs provided by the ```dorothea``` package for *Homo sapiens*.  The expression ```dgCMatrix``` is a set of 230 gene expression levels measured across 80 PBMC cells provided by the ```Seurat``` package as ```pbmc_small```. Finally, the ppi ```data.frame``` describes a set of known pairwise protein-protein interactions.
 ```{R}
 data(scorpionTest)
 ```
