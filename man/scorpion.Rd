@@ -59,6 +59,81 @@ A list of matrices describing networks achieved by convergence with PANDA algori
 \description{
 Constructs gene regulatory networks from single-cell gene expression data using the PANDA (Passing Attributes between Networks for Data Assimilation) algorithm.
 }
+\examples{
+# Loading example data
+data(scorpionTest)
+
+# The structure of the data
+str(scorpionTest)
+
+# List of 3
+# $ gex:Formal class 'dgCMatrix' [package "Matrix"] with 6 slots
+# .. ..@ i       : int [1:4456] 1 5 8 11 22 30 33 34 36 38 ...
+# .. ..@ p       : int [1:81] 0 47 99 149 205 258 306 342 387 423 ...
+# .. ..@ Dim     : int [1:2] 230 80
+# .. ..@ Dimnames:List of 2
+# .. .. ..$ : chr [1:230] "MS4A1" "CD79B" "CD79A" "HLA-DRA" ...
+# .. .. ..$ : chr [1:80] "ATGCCAGAACGACT" "CATGGCCTGTGCAT" "GAACCTGATGAACC" "TGACTGGATTCTCA" ...
+# .. ..@ x       : num [1:4456] 1 1 3 1 1 4 1 5 1 1 ...
+# .. ..@ factors : list()
+# $ tf :'data.frame':	4485 obs. of  3 variables:
+#   ..$ tf    : chr [1:4485] "ADNP" "ADNP" "ADNP" "AEBP2" ...
+# ..$ target: chr [1:4485] "PRF1" "TMEM40" "TNFRSF1B" "CFP" ...
+# ..$ mor   : num [1:4485] 1 1 1 1 1 1 1 1 1 1 ...
+# $ ppi:'data.frame':	12754 obs. of  3 variables:
+#   ..$ X.node1       : chr [1:12754] "ADNP" "ADNP" "ADNP" "AEBP2" ...
+# ..$ node2         : chr [1:12754] "ZBTB14" "NFIA" "CDC5L" "YY1" ...
+# ..$ combined_score: num [1:12754] 0.769 0.64 0.581 0.597 0.54 0.753 0.659 0.548 0.59 0.654 ...
+
+# Running SCORPION with large alphaValue for testing purposes.
+scorpionOutput <- scorpion(tfMotifs = scorpionTest$tf,
+                           gexMatrix = scorpionTest$gex,
+                           ppiNet = scorpionTest$ppi,
+                           alphaValue = 0.8)
+
+# [1] "Initializing and validating"
+# [1] "Verified sufficient samples"
+# [1] "Normalizing networks..."
+# [1] "Learning Network..."
+# [1] "Using tanimoto similarity"
+# Iteration 0: hamming distance = 0.73486
+# Iteration 1: hamming distance = 0.22155
+# Iteration 2: hamming distance = 0.078
+# Iteration 3: hamming distance = 0.01924
+# Iteration 4: hamming distance = 0.00414
+# Iteration 5: hamming distance = 0.00085
+# Successfully ran SCORPION on 214 Genes and 783 TFs.
+# Time elapsed:3.75seconds.
+
+# Structure of the output.
+str(scorpionOutput)
+
+# List of 6
+# $ regNet  :Formal class 'dgeMatrix' [package "Matrix"] with 4 slots
+# .. ..@ x       : num [1:167562] -0.413 1.517 -1.311 0.364 -1.041 ...
+# .. ..@ Dim     : int [1:2] 783 214
+# .. ..@ Dimnames:List of 2
+# .. .. ..$ : chr [1:783] "ADNP" "AEBP2" "AIRE" "ALX1" ...
+# .. .. ..$ : chr [1:214] "ACAP1" "ACRBP" "ACSM3" "ADAR" ...
+# .. ..@ factors : list()
+# $ coregNet:Formal class 'dgeMatrix' [package "Matrix"] with 4 slots
+# .. ..@ x       : num [1:45796] 7.07e+06 -4.06 1.76e+01 -1.16e+01 -1.62e+01 ...
+# .. ..@ Dim     : int [1:2] 214 214
+# .. ..@ Dimnames:List of 2
+# .. .. ..$ : chr [1:214] "ACAP1" "ACRBP" "ACSM3" "ADAR" ...
+# .. .. ..$ : chr [1:214] "ACAP1" "ACRBP" "ACSM3" "ADAR" ...
+# .. ..@ factors : list()
+# $ coopNet :Formal class 'dgeMatrix' [package "Matrix"] with 4 slots
+# .. ..@ x       : num [1:613089] 5.65e+06 -5.16 -3.79 -3.63 2.94 ...
+# .. ..@ Dim     : int [1:2] 783 783
+# .. ..@ Dimnames:List of 2
+# .. .. ..$ : chr [1:783] "ADNP" "AEBP2" "AIRE" "ALX1" ...
+# .. .. ..$ : chr [1:783] "ADNP" "AEBP2" "AIRE" "ALX1" ...
+# .. ..@ factors : list()
+# $ numGenes: int 214
+# $ numTFs  : int 783
+# $ numEdges: int 167562
+}
 \author{
 Daniel Osorio <daniecos@uio.no>
 }
