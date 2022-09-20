@@ -91,19 +91,13 @@ scorpionOutput <- scorpion(tfMotifs = scorpionTest$tf,
                            ppiNet = scorpionTest$ppi,
                            alphaValue = 0.8)
 
-# [1] "Initializing and validating"
-# [1] "Verified sufficient samples"
-# [1] "Normalizing networks..."
-# [1] "Learning Network..."
-# [1] "Using tanimoto similarity"
-# Iteration 0: hamming distance = 0.73486
-# Iteration 1: hamming distance = 0.22155
-# Iteration 2: hamming distance = 0.078
-# Iteration 3: hamming distance = 0.01924
-# Iteration 4: hamming distance = 0.00414
-# Iteration 5: hamming distance = 0.00085
-# Successfully ran SCORPION on 214 Genes and 783 TFs.
-# Time elapsed:3.75seconds.
+# -- SCORPION --------------------------------------------------------------------------------------
+# √ Initializing and validating
+# √ Verified sufficient samples
+# i Normalizing networks
+# i Learning Network
+# i Using tanimoto similarity
+# √ Successfully ran SCORPION on 214 Genes and 783 TFs
 
 # Structure of the output.
 str(scorpionOutput)
