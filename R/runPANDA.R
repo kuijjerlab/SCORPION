@@ -212,7 +212,8 @@ runPANDA <- function(motif = NULL,expr=NULL,ppi=NULL,alpha=0.1,hamming=0.001, n.
   if(progress)
     cli::cli_alert_success(paste0("Successfully ran SCORPION on ", num.genes, " Genes and ", num.TFs, " TFs"))
     cli::cli_alert_info(paste0("Time elapsed: ", round(toc,2), " seconds"))
+    cli::cli_end()
 
-  prepResult(zScale, output, regulatoryNetwork, geneCoreg, tfCoopNetwork, edgelist, motif)
-  cli::cli_end()
+  O <- prepResult(zScale, output, regulatoryNetwork, geneCoreg, tfCoopNetwork, edgelist, motif)
+  return(O)
 }
