@@ -5,14 +5,13 @@
 ![method](https://raw.githubusercontent.com/kuijjerlab/SCORPION/main/inst/methodSCORPION.png)
 
 ## Usage
-**SCORPION** is under active development, you can install it, using the following command:
+**SCORPION** is available through the CRAN repositories, you can install and load it, using the following command:
 ```{r}
-library(remotes)
-install_github('kuijjerlab/SCORPION')
+install.packages('SCORPION')
 library(SCORPION)
 ```
 ## Example
-1 - **Loading example data.** This dataset is a list containing three objects. The motif ```data.frame``` describes a set of pairwise connections where a specific known sequence motif of a transcription factor was found upstream of the corresponding gene. For this particular example, the data is a subset of the transcription-factor and target gene pairs provided by the ```dorothea``` package for *Homo sapiens*.  The expression ```dgCMatrix``` is a set of 230 gene expression levels measured across 80 PBMC cells provided by the ```Seurat``` package as ```pbmc_small```. Finally, the ppi ```data.frame``` describes a set of known pairwise protein-protein interactions.
+We provide an example dataset (formally a ```list```) containing three objects. The motif ```data.frame``` describes a set of pairwise connections where a specific known sequence motif of a transcription factor was found upstream of the corresponding gene. For this particular example, the data is a subset of the transcription-factor and target gene pairs provided by the ```dorothea``` package for *Homo sapiens*.  The expression ```dgCMatrix``` is a set of 230 gene expression levels measured across 80 PBMC cells provided by the ```Seurat``` package as ```pbmc_small```. Finally, the ppi ```data.frame``` describes a set of known pairwise protein-protein interactions.
 ```{R}
 data(scorpionTest)
 ```
@@ -45,19 +44,14 @@ scorpionOutput <- scorpion(tfMotifs = scorpionTest$tf,
                            gexMatrix = scorpionTest$gex,
                            ppiNet = scorpionTest$ppi,
                            alphaValue = 0.8)
-# [1] "Initializing and validating"
-# [1] "Verified sufficient samples"
-# [1] "Normalizing networks..."
-# [1] "Learning Network..."
-# [1] "Using tanimoto similarity"
-# Iteration 0: hamming distance = 0.73486
-# Iteration 1: hamming distance = 0.22155
-# Iteration 2: hamming distance = 0.078
-# Iteration 3: hamming distance = 0.01924
-# Iteration 4: hamming distance = 0.00414
-# Iteration 5: hamming distance = 0.00085
-# Successfully ran SCORPION on 214 Genes and 783 TFs.
-# Time elapsed:3.75seconds.
+# ── SCORPION ────────────────────────────────────────────────────────────────
+# ✔ Initializing and validating
+# ✔ Verified sufficient samples
+# ℹ Normalizing networks
+# ℹ Learning Network
+# ℹ Using tanimoto similarity
+# ✔ Successfully ran SCORPION on 214 Genes and 783 TFs
+# ℹ Time elapsed: 2.72 seconds        
 ```
 
 The structure of the output can be accessed as follows:
