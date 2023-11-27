@@ -84,3 +84,9 @@ str(scorpionOutput)
 # $ numTFs  : int 783
 # $ numEdges: int 167562
 ```
+
+## Citation
+Please cite: Osorio, D., Capasso, A., Eckhardt, S. G., Giri, U., Somma, A., Pitts, T. M., ... & Kuijjer, M. L. (2023). Population-level comparisons of gene regulatory networks modeled on high-throughput single-cell transcriptomics data. bioRxiv, 2023-01.
+
+## Supplementary Information
+For the supplementary information of *Population-level comparisons of gene regulatory networks modeled on high-throughput single-cell transcriptomics data*. Please visit: [SCORPION Supplementary Information](https://github.com/dosorio/SCORPION/)
