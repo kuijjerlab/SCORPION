@@ -19,7 +19,8 @@ scorpion(
   zScaling = TRUE,
   showProgress = TRUE,
   randomizationMethod = "None",
-  scaleByPresent = FALSE
+  scaleByPresent = FALSE,
+  filterExpr = FALSE
 )
 }
 \arguments{
@@ -51,7 +52,9 @@ scorpion(
 
 \item{randomizationMethod}{Method by which to randomize gene expression matrix. Default "None". Must be one of "None", "within.gene", "by.genes". "within.gene" randomization scrambles each row of the gene expression matrix, "by.gene" scrambles gene labels.}
 
-\item{scaleByPresent}{Boolean to indicate scaling of correlations by percentage of positive samples}
+\item{scaleByPresent}{Boolean to indicate scaling of correlations by percentage of positive samples.}
+
+\item{filterExpr}{Boolean to indicate wheter or not to remove genes with 0 expression across all cells from the GEX input.}
 }
 \value{
 A list of matrices describing networks achieved by convergence with PANDA algorithm.

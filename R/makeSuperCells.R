@@ -45,6 +45,7 @@ makeSuperCells <- function(X,
     colnames(X) <- paste("cell", 1:N.c, sep = "_")
   }
 
+  X <- X[rowSums(X) > 0,]
   keep.genes    <- setdiff(rownames(X), genes.exclude)
   X             <- X[keep.genes, ]
 
@@ -254,7 +255,7 @@ makeSuperCells <- function(X,
       stop("weights must be the same length as groups or NULL in case of unweighted averaging")
     }
     M.AV <- Matrix::sparseMatrix(i = i, j = j, x = weights[i])
-    GE <- X %*% M.AV
+    GE <- GE %*% M.AV
 
     weighted_supercell_size <-
       unlist(lapply(
