@@ -8,6 +8,7 @@ scorpion(
   tfMotifs = NULL,
   gexMatrix,
   ppiNet = NULL,
+  computingEngine = "cpu",
   nCores = 1,
   gammaValue = 10,
   nPC = 25,
@@ -29,6 +30,8 @@ scorpion(
 \item{gexMatrix}{An expression dataset, with genes in the rows and barcodes (cells) in the columns.}
 
 \item{ppiNet}{A Protein-Protein-Interaction dataset, a data.frame or matrix containing 3 columns. Each row describes a protein-protein interaction between transcription factor 1(column 1), transcription factor 2 (column 2) and a score (column 3) for the interaction.}
+
+\item{computingEngine}{Either 'cpu' or 'gpu'}
 
 \item{nCores}{Number of processors to be used if BLAS or MPI is active.}
 

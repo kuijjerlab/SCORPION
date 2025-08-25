@@ -4,13 +4,13 @@ tanimoto <- function(X, Y) {
   dm = c(nr, nc)
 
   Amat = (X %*% Y)
-  Bmat = colSums(Y * Y)
+  Bmat = apply(Y * Y, 2, sum)
 
   Bmat = rep(Bmat, each = nr)
   dim(Bmat) = dm
   #Bmat=matrix(rep(Bmat, each=nr), dm)
 
-  Cmat = rowSums(X * X)
+  Cmat = apply(X * X, 1, sum)
   Cmat = rep(Cmat, nc)
   dim(Cmat) = dm
   #Cmat=matrix(rep(Cmat, nc), dm)

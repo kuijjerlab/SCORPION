@@ -6,6 +6,7 @@
 #' @param tfMotifs A motif dataset, a data.frame or a matrix containing 3 columns. Each row describes an motif associated with a transcription factor (column 1) a gene (column 2) and a score (column 3) for the motif.
 #' @param gexMatrix An expression dataset, with genes in the rows and barcodes (cells) in the columns.
 #' @param ppiNet A Protein-Protein-Interaction dataset, a data.frame or matrix containing 3 columns. Each row describes a protein-protein interaction between transcription factor 1(column 1), transcription factor 2 (column 2) and a score (column 3) for the interaction.
+#' @param computingEngine Either 'cpu' or 'gpu'
 #' @param nCores Number of processors to be used if BLAS or MPI is active.
 #' @param gammaValue Graining level of data (proportion of number of single cells in the initial dataset to the number of super-cells in the final dataset)
 #' @param nPC Number of principal components to use for construction of single-cell kNN network.
@@ -92,6 +93,7 @@
 scorpion <- function(tfMotifs = NULL,
                      gexMatrix,
                      ppiNet = NULL,
+                     computingEngine = 'cpu',
                      nCores = 1,
                      gammaValue = 10,
                      nPC = 25,
@@ -108,31 +110,32 @@ scorpion <- function(tfMotifs = NULL,
 
   cli::cli_h1('SCORPION')
 
-  if(isTRUE(filterExpr)){
+  if (isTRUE(filterExpr)) {
     gexMatrix <- gexMatrix[rowSums(gexMatrix) > 0,]
   }
   gexMatrix <- makeSuperCells(X = gexMatrix, gamma = gammaValue, n.pc = nPC, fast.pca = FALSE)
 
-  if(is.null(ppiNet) & is.null(tfMotifs)){
-    if(assocMethod == 'spearman'){
+  if (is.null(ppiNet) & is.null(tfMotifs)) {
+    if (assocMethod == 'spearman') {
       gexMatrix <- Matrix(t(apply(gexMatrix, 1, rank)))
     }
     geneCoExpr <- gexMatrix - rowMeans(gexMatrix)
-    geneCoExpr <- geneCoExpr/sqrt(rowSums(geneCoExpr^2))
+    geneCoExpr <- geneCoExpr / sqrt(rowSums(geneCoExpr ^ 2))
     geneCoExpr <- tcrossprod(geneCoExpr)
     return(geneCoExpr)
   }
   outNetworks <- runPANDA(motif = tfMotifs,
                           ppi = ppiNet,
                           expr = gexMatrix,
+                          computing.engine = computingEngine,
                           n.cores = nCores,
                           alpha = alphaValue,
                           hamming = hammingValue,
                           iter = nIter,
                           output = outNet,
                           zScale = zScaling,
-                          progress = showProgress ,
-                          randomize = randomizationMethod ,
+                          progress = showProgress,
+                          randomize = randomizationMethod,
                           assoc.method = assocMethod,
                           scale.by.present = scaleByPresent)
   return(outNetworks)
