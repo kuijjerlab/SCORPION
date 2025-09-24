@@ -1,4 +1,4 @@
-prepResult <- function(zScale, output, regulatoryNetwork, geneCoreg, tfCoopNetwork, edgelist, motif){
+prepResult <- function(zScale, output, regulatoryNetwork, geneCoreg, tfCoopNetwork, edgelist, motif) {
   # if (!zScale){
   #   regulatoryNetwork <- stats::pnorm(regulatoryNetwork)
   #   geneCoreg         <- stats::pnorm(geneCoreg)
@@ -27,8 +27,10 @@ prepResult <- function(zScale, output, regulatoryNetwork, geneCoreg, tfCoopNetwo
   #   resList$coopNet <- tfCoopNetwork
   # }
   resList <- list()
-  numGenes = dim(geneCoreg)[1]
-  numTFs   = dim(tfCoopNetwork)[1]
-  numEdges = sum(apply(regulatoryNetwork,1,function(X){X!=0}))
-  list(regNet=regulatoryNetwork, coregNet=geneCoreg, coopNet=tfCoopNetwork, numGenes=numGenes, numTFs=numTFs, numEdges=numEdges)
+  numGenes <- dim(geneCoreg)[1]
+  numTFs <- dim(tfCoopNetwork)[1]
+  numEdges <- sum(apply(regulatoryNetwork, 1, function(X) {
+    X != 0
+  }))
+  list(regNet = regulatoryNetwork, coregNet = geneCoreg, coopNet = tfCoopNetwork, numGenes = numGenes, numTFs = numTFs, numEdges = numEdges)
 }

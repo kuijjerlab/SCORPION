@@ -6,10 +6,9 @@ buildKNN <- function(X,
                      dist_method = "euclidean",
                      cor_method = "pearson",
                      p = 2,
-                     directed = FALSE)
-{
+                     directed = FALSE) {
   av.methods <- c("dist", "coordinates")
-  method <-  pmatch(from[1], av.methods)
+  method <- pmatch(from[1], av.methods)
   if (is.na(method)) {
     stop(paste(
       "Unlnown method",
@@ -36,18 +35,20 @@ buildKNN <- function(X,
           )
         )
       }
-      mode <- ifelse(directed, 'out', 'all')
+      mode <- ifelse(directed, "out", "all")
       return(buildNN2(X = X, k = k, mode = mode))
     } else {
-      av.dist      <-
-        c("cor",
+      av.dist <-
+        c(
+          "cor",
           "euclidean",
           "maximum",
           "manhattan",
           "canberra",
           "binary",
-          "minkowski")
-      dist_method_ <-  pmatch(dist_method, av.dist)
+          "minkowski"
+        )
+      dist_method_ <- pmatch(dist_method, av.dist)
       if (is.na(dist_method_)) {
         stop(
           paste(
@@ -59,10 +60,10 @@ buildKNN <- function(X,
         )
       }
       if (dist_method_ == 1) {
-        #print("cor")
-        #print(cor_method)
+        # print("cor")
+        # print(cor_method)
         av.cor_methods <- c("pearson", "kendall", "spearman")
-        cor_method_    <- pmatch(cor_method, av.cor_methods)
+        cor_method_ <- pmatch(cor_method, av.cor_methods)
         if (is.na(cor_method_)) {
           stop(
             paste(
@@ -99,5 +100,4 @@ buildKNN <- function(X,
     k = k,
     return_neighbors_order = return_neighbors_order
   ))
-
 }

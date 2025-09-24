@@ -1,46 +1,45 @@
 normalizeNetwork <- function(X) {
-
-  nr = nrow(X)
-  nc = ncol(X)
-  dm = c(nr, nc)
+  nr <- nrow(X)
+  nc <- ncol(X)
+  dm <- c(nr, nc)
 
   # overall values
-  mu0 = mean(X)
-  std0 = sd(X) * sqrt((nr * nc - 1) / (nr * nc))
+  mu0 <- mean(X)
+  std0 <- sd(X) * sqrt((nr * nc - 1) / (nr * nc))
 
   # operations on rows
-  mu1 = rowMeans(X) # operations on rows
-  std1 = rowSds(X) * sqrt((nc - 1) / nc)
+  mu1 <- rowMeans(X) # operations on rows
+  std1 <- rowSds(X) * sqrt((nc - 1) / nc)
 
-  mu1 = rep(mu1, nc)
-  dim(mu1) = dm
-  std1 = rep(std1, nc)
-  dim(std1) = dm
+  mu1 <- rep(mu1, nc)
+  dim(mu1) <- dm
+  std1 <- rep(std1, nc)
+  dim(std1) <- dm
 
-  Z1 = (X - mu1) / std1
+  Z1 <- (X - mu1) / std1
 
   # operations on columns
-  mu2 = colMeans(X) # operations on columns
-  std2 = colSds(X) * sqrt((nr - 1) / nr)
+  mu2 <- colMeans(X) # operations on columns
+  std2 <- colSds(X) * sqrt((nr - 1) / nr)
 
-  mu2 = rep(mu2, each = nr)
-  dim(mu2) = dm
-  std2 = rep(std2, each = nr)
-  dim(std2) = dm
+  mu2 <- rep(mu2, each = nr)
+  dim(mu2) <- dm
+  std2 <- rep(std2, each = nr)
+  dim(std2) <- dm
 
-  Z2 = (X - mu2) / std2
+  Z2 <- (X - mu2) / std2
 
   # combine and return
-  normMat = Z1 / sqrt(2) + Z2 / sqrt(2)
+  normMat <- Z1 / sqrt(2) + Z2 / sqrt(2)
 
-  Z0=(X-mu0)/std0;
-  f1=is.na(Z1@x)
-  f2=is.na(Z2@x);
+  Z0 <- (X - mu0) / std0
+  f1 <- is.na(Z1@x)
+  f2 <- is.na(Z2@x)
 
 
-  normMat@x[f1]=Z2@x[f1]/sqrt(2)+Z0@x[f1]/sqrt(2);
-  normMat@x[f2]=Z1@x[f2]/sqrt(2)+Z0@x[f2]/sqrt(2);
-  normMat@x[f1 & f2]=2*Z0@x[f1 & f2]/sqrt(2);
+  normMat@x[f1] <- Z2@x[f1] / sqrt(2) + Z0@x[f1] / sqrt(2)
+  normMat@x[f2] <- Z1@x[f2] / sqrt(2) + Z0@x[f2] / sqrt(2)
+  normMat@x[f1 & f2] <- 2 * Z0@x[f1 & f2] / sqrt(2)
 
   return(normMat)
 }
