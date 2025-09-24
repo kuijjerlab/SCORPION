@@ -3,7 +3,7 @@ pcNet <- function(X,
                   nComp = 3,
                   scaleScores = TRUE,
                   symmetric = FALSE,
-                  q = 0, verbose = TRUE,
+                  q = 0, verbose = FALSE,
                   nCores = 1) {
   if (!all(Matrix::rowSums(X) > 0)) {
     stop("Quality control has not been applied over the matrix.")
