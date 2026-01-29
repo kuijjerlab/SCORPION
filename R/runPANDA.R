@@ -140,13 +140,13 @@ runPANDA <- function(motif = NULL, expr = NULL, ppi = NULL, alpha = 0.1, hamming
       if (assoc.method == "pcNet") {
         geneCoreg <- pcNet(as.matrix(expr)) * (num.positive / num.conditions)
       } else {
-        geneCoreg <- Matrix(cor(as.matrix(t(expr)), method = assoc.method, use = "pairwise.complete.obs"))
+        geneCoreg <- suppressWarnings(Matrix(fastCorrelation(t(expr), t(expr), method = assoc.method))) * (num.positive / num.conditions)
       }
     } else {
       if (assoc.method == "pcNet") {
         geneCoreg <- pcNet(as.matrix(expr))
       } else {
-        geneCoreg <- Matrix(cor(as.matrix(t(expr)), method = assoc.method, use = "pairwise.complete.obs"))
+        geneCoreg <- suppressWarnings(Matrix(fastCorrelation(t(expr), t(expr), method = assoc.method)))
       }
     }
     if (progress) {
@@ -224,10 +224,9 @@ runPANDA <- function(motif = NULL, expr = NULL, ppi = NULL, alpha = 0.1, hamming
   toc <- proc.time()[3] - tic
   if (progress) {
     cli::cli_alert_success(paste0("Successfully ran SCORPION on ", num.genes, " Genes and ", num.TFs, " TFs"))
+    cli::cli_alert_info(paste0("Time elapsed: ", round(toc, 2), " seconds"))
+    cli::cli_end()
   }
-  cli::cli_alert_info(paste0("Time elapsed: ", round(toc, 2), " seconds"))
-  cli::cli_end()
-
   regulatoryNetwork <- as.matrix(regulatoryNetwork)
   dimnames(regulatoryNetwork) <- list(tf.names, gene.names)
   geneCoreg <- as.matrix(geneCoreg)

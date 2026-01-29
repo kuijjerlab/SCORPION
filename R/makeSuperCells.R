@@ -46,6 +46,7 @@ makeSuperCells <- function(X,
   }
 
   X <- X[rowSums(X) > 0, ]
+  X <- X[apply(X,1,var) > 0, ]
   keep.genes <- setdiff(rownames(X), genes.exclude)
   X <- X[keep.genes, ]
 
