@@ -40,13 +40,13 @@
 #'   groupBy = "region"
 #' )
 #'
-#' # ── SCORPION ────────────────────────────────────────────────────────────────
-#' # ✔ Normalizing data (log scale)
-#' # ℹ 3 networks requested
-#' # ✔ 3 networks meet the minimum cell requirement (30)
-#' # ℹ Computing networks
-#' # ✔ Networks successfully constructed
-#' # ✔ Networks successfully combined
+#' # -- SCORPION ----------------------------------------------------------------
+#' # + Normalizing data (log scale)
+#' # i 3 networks requested
+#' # + 3 networks meet the minimum cell requirement (30)
+#' # i Computing networks
+#' # + Networks successfully constructed
+#' # + Networks successfully combined
 #'
 #' # head(nets_by_region)
 #' #                           tf target           T          B           N
@@ -66,13 +66,13 @@
 #'   groupBy = "donor"
 #' )
 #'
-#' # ── SCORPION ────────────────────────────────────────────────────────────────
-#' # ✔ Normalizing data (log scale)
-#' # ℹ 3 networks requested
-#' # ✔ 3 networks meet the minimum cell requirement (30)
-#' # ℹ Computing networks
-#' # ✔ Networks successfully constructed
-#' # ✔ Networks successfully combined
+#' # -- SCORPION ----------------------------------------------------------------
+#' # + Normalizing data (log scale)
+#' # i 3 networks requested
+#' # + 3 networks meet the minimum cell requirement (30)
+#' # i Computing networks
+#' # + Networks successfully constructed
+#' # + Networks successfully combined
 #' # head(nets_by_donor)
 #' #                           tf target         P31        P32         P33
 #' # 1                       AATF  ACKR1 -0.34869366 -0.3557884 -0.35010835
@@ -91,13 +91,13 @@
 #'   groupBy = c("donor", "region")
 #' )
 #'
-#' # ── SCORPION ────────────────────────────────────────────────────────────────
-#' # ✔ Normalizing data (log scale)
-#' # ℹ 9 networks requested
-#' # ✔ 9 networks meet the minimum cell requirement (30)
-#' # ℹ Computing networks
-#' # ✔ Networks successfully constructed
-#' # ✔ Networks successfully combined
+#' # -- SCORPION ----------------------------------------------------------------
+#' # + Normalizing data (log scale)
+#' # i 9 networks requested
+#' # + 9 networks meet the minimum cell requirement (30)
+#' # i Computing networks
+#' # + Networks successfully constructed
+#' # + Networks successfully combined
 #' # head(nets_by_donor_region)
 #' #                           tf target      P31--T      P31--B     P31--N
 #' # 1                       AATF  ACKR1 -0.32634975 -0.33717677 -0.3442886
@@ -116,13 +116,13 @@
 #'   groupBy = c("donor", "region", "cell_type")
 #' )
 #'
-#' # ── SCORPION ────────────────────────────────────────────────────────────────
-#' # ✔ Normalizing data (log scale)
-#' # ℹ 9 networks requested
-#' # ✔ 9 networks meet the minimum cell requirement (30)
-#' # ℹ Computing networks
-#' # ✔ Networks successfully constructed
-#' # ✔ Networks successfully combined
+#' # -- SCORPION ----------------------------------------------------------------
+#' # + Normalizing data (log scale)
+#' # i 9 networks requested
+#' # + 9 networks meet the minimum cell requirement (30)
+#' # i Computing networks
+#' # + Networks successfully constructed
+#' # + Networks successfully combined
 #' # head(nets_by_donor_region_cell_type)
 #' #                           tf target P31--T--Epithelial P31--B--Epithelial
 #' # 1                       AATF  ACKR1        -0.32634975        -0.33717677
@@ -142,13 +142,13 @@
 #'   computingEngine = "gpu"
 #' )
 #'
-#' # ── SCORPION ────────────────────────────────────────────────────────────────
-#' # ✔ Normalizing data (log scale)
-#' # ℹ 3 networks requested
-#' # ✔ 3 networks meet the minimum cell requirement (30)
-#' # ℹ Computing networks
-#' # ✔ Networks successfully constructed
-#' # ✔ Networks successfully combined
+#' # -- SCORPION ----------------------------------------------------------------
+#' # + Normalizing data (log scale)
+#' # i 3 networks requested
+#' # + 3 networks meet the minimum cell requirement (30)
+#' # i Computing networks
+#' # + Networks successfully constructed
+#' # + Networks successfully combined
 #' # head(nets_gpu)
 #' #                           tf target           T          B           N
 #' # 1                       AATF  ACKR1 -0.31433821 -0.3569913 -0.33734894
@@ -169,14 +169,14 @@
 #'   batch = scorpionTest$metadata$donor
 #' )
 #'
-#' # ── SCORPION ────────────────────────────────────────────────────────────────
-#' # ✔ Normalizing data (log scale)
-#' # ✔ Correcting for batch effects
-#' # ℹ 3 networks requested
-#' # ✔ 3 networks meet the minimum cell requirement (30)
-#' # ℹ Computing networks
-#' # ✔ Networks successfully constructed
-#' # ✔ Networks successfully combined
+#' # -- SCORPION ----------------------------------------------------------------
+#' # + Normalizing data (log scale)
+#' # + Correcting for batch effects
+#' # i 3 networks requested
+#' # + 3 networks meet the minimum cell requirement (30)
+#' # i Computing networks
+#' # + Networks successfully constructed
+#' # + Networks successfully combined
 #' # head(nets_batch_corrected)
 #' #                           tf target          T           B           N
 #' # 1                       AATF  ACKR1 -0.3337298 -0.34885471 -0.13011777
