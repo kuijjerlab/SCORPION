@@ -63,14 +63,14 @@ scorpionOutput <- scorpion(tfMotifs = scorpionTest$tf,
                            gexMatrix = scorpionTest$gex,
                            ppiNet = scorpionTest$ppi,
                            alphaValue = 0.8)
-# ── SCORPION ────────────────────────────────────────────────────────────────
-# ✔ Initializing and validating
-# ✔ Verified sufficient samples
-# ℹ Normalizing networks
-# ℹ Learning Network
-# ℹ Using tanimoto similarity
-# ✔ Successfully ran SCORPION on 214 Genes and 783 TFs
-# ℹ Time elapsed: 2.72 seconds
+── SCORPION ──────────────────────────────────────────────
+✔ Initializing and validating
+✔ Verified sufficient samples
+ℹ Normalizing networks
+ℹ Learning Network
+ℹ Using tanimoto similarity
+✔ Successfully ran SCORPION on 281 Genes and 963 TFs
+ℹ Time elapsed: 2.12 seconds            
 ```
 
 The structure of the output can be accessed as follows:
@@ -78,30 +78,21 @@ The structure of the output can be accessed as follows:
 str(scorpionOutput)
 
 # List of 6
-# $ regNet  :Formal class 'dgeMatrix' [package "Matrix"] with 4 slots
-# .. ..@ x       : num [1:167562] -0.413 1.517 -1.311 0.364 -1.041 ...
-# .. ..@ Dim     : int [1:2] 783 214
-# .. ..@ Dimnames:List of 2
-# .. .. ..$ : chr [1:783] "ADNP" "AEBP2" "AIRE" "ALX1" ...
-# .. .. ..$ : chr [1:214] "ACAP1" "ACRBP" "ACSM3" "ADAR" ...
-# .. ..@ factors : list()
-# $ coregNet:Formal class 'dgeMatrix' [package "Matrix"] with 4 slots
-# .. ..@ x       : num [1:45796] 7.07e+06 -4.06 1.76e+01 -1.16e+01 -1.62e+01 ...
-# .. ..@ Dim     : int [1:2] 214 214
-# .. ..@ Dimnames:List of 2
-# .. .. ..$ : chr [1:214] "ACAP1" "ACRBP" "ACSM3" "ADAR" ...
-# .. .. ..$ : chr [1:214] "ACAP1" "ACRBP" "ACSM3" "ADAR" ...
-# .. ..@ factors : list()
-# $ coopNet :Formal class 'dgeMatrix' [package "Matrix"] with 4 slots
-# .. ..@ x       : num [1:613089] 5.65e+06 -5.16 -3.79 -3.63 2.94 ...
-# .. ..@ Dim     : int [1:2] 783 783
-# .. ..@ Dimnames:List of 2
-# .. .. ..$ : chr [1:783] "ADNP" "AEBP2" "AIRE" "ALX1" ...
-# .. .. ..$ : chr [1:783] "ADNP" "AEBP2" "AIRE" "ALX1" ...
-# .. ..@ factors : list()
-# $ numGenes: int 214
-# $ numTFs  : int 783
-# $ numEdges: int 167562
+# $ regNet  : num [1:963, 1:281] -0.1556 -0.0455 -0.1461 1.6881 0.8746 ...
+# ..- attr(*, "dimnames")=List of 2
+# .. ..$ : chr [1:963] "AATF" "ABL1" "ACSS2" "ADNP" ...
+# .. ..$ : chr [1:281] "ACKR1" "ACTA2" "ACTG2" "ADAMDEC1" ...
+# $ coregNet: num [1:281, 1:281] 2.02e+06 3.84 4.10 -1.26 8.81e-01 ...
+# ..- attr(*, "dimnames")=List of 2
+# .. ..$ : chr [1:281] "ACKR1" "ACTA2" "ACTG2" "ADAMDEC1" ...
+# .. ..$ : chr [1:281] "ACKR1" "ACTA2" "ACTG2" "ADAMDEC1" ...
+# $ coopNet : num [1:963, 1:963] 1.17e+07 -2.66 8.13 -1.31 4.95 ...
+# ..- attr(*, "dimnames")=List of 2
+# .. ..$ : chr [1:963] "AATF" "ABL1" "ACSS2" "ADNP" ...
+# .. ..$ : chr [1:963] "AATF" "ABL1" "ACSS2" "ADNP" ...
+# $ numGenes: int 281
+# $ numTFs  : int 963
+# $ numEdges: int 270603
 ```
 
 **Output components:**
