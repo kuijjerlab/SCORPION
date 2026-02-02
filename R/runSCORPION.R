@@ -1,7 +1,7 @@
 #' @title Run SCORPION across cell groups and return combined networks
 #' @description Builds per-group regulatory networks by running \code{\link{scorpion}} on subsets of cells defined by \code{cellsMetadata} and combining the resulting networks into a wide-format data frame where each column corresponds to a network.
-#' @param countMatrix An expression dataset with genes in the rows and barcodes (cells) in the columns.
-#' @param tfTargets A motif dataset, a data.frame or a matrix containing 3 columns. Each row describes a motif associated with a transcription factor (column 1) a gene (column 2) and a score (column 3).
+#' @param gexMatrix An expression dataset with genes in the rows and barcodes (cells) in the columns.
+#' @param tfMotifs A motif dataset, a data.frame or a matrix containing 3 columns. Each row describes a motif associated with a transcription factor (column 1) a gene (column 2) and a score (column 3).
 #' @param ppiNet A Protein-Protein-Interaction dataset, a data.frame or matrix containing 3 columns. Each row describes a protein-protein interaction between transcription factor 1 (column 1), transcription factor 2 (column 2) and a score (column 3).
 #' @param cellsMetadata A data.frame with cell-level metadata; must contain columns specified in \code{groupBy}.
 #' @param groupBy Character vector of one or more column names in \code{cellsMetadata} to use for grouping cells into networks.
@@ -33,8 +33,8 @@
 #'
 #' # Example 1: Group by single column (region)
 #' nets_by_region <- runSCORPION(
-#'   countMatrix = scorpionTest$gex,
-#'   tfTargets = scorpionTest$tf,
+#'   gexMatrix = scorpionTest$gex,
+#'   tfMotifs = scorpionTest$tf,
 #'   ppiNet = scorpionTest$ppi,
 #'   cellsMetadata = scorpionTest$metadata,
 #'   groupBy = "region"
@@ -59,8 +59,8 @@
 #'
 #' # Example 2: Group by single column (donor)
 #' nets_by_donor <- runSCORPION(
-#'   countMatrix = scorpionTest$gex,
-#'   tfTargets = scorpionTest$tf,
+#'   gexMatrix = scorpionTest$gex,
+#'   tfMotifs = scorpionTest$tf,
 #'   ppiNet = scorpionTest$ppi,
 #'   cellsMetadata = scorpionTest$metadata,
 #'   groupBy = "donor"
@@ -84,8 +84,8 @@
 #'
 #' # Example 3: Group by two columns (donor and region)
 #' nets_by_donor_region <- runSCORPION(
-#'   countMatrix = scorpionTest$gex,
-#'   tfTargets = scorpionTest$tf,
+#'   gexMatrix = scorpionTest$gex,
+#'   tfMotifs = scorpionTest$tf,
 #'   ppiNet = scorpionTest$ppi,
 #'   cellsMetadata = scorpionTest$metadata,
 #'   groupBy = c("donor", "region")
@@ -109,8 +109,8 @@
 #'
 #' # Example 4: Group by three columns (donor, region, and cell_type)
 #' nets_by_donor_region_cell_type <- runSCORPION(
-#'   countMatrix = scorpionTest$gex,
-#'   tfTargets = scorpionTest$tf,
+#'   gexMatrix = scorpionTest$gex,
+#'   tfMotifs = scorpionTest$tf,
 #'   ppiNet = scorpionTest$ppi,
 #'   cellsMetadata = scorpionTest$metadata,
 #'   groupBy = c("donor", "region", "cell_type")
@@ -134,8 +134,8 @@
 #'
 #' # Example 5: Using GPU computing engine (if available)
 #' nets_gpu <- runSCORPION(
-#'   countMatrix = scorpionTest$gex,
-#'   tfTargets = scorpionTest$tf,
+#'   gexMatrix = scorpionTest$gex,
+#'   tfMotifs = scorpionTest$tf,
 #'   ppiNet = scorpionTest$ppi,
 #'   cellsMetadata = scorpionTest$metadata,
 #'   groupBy = "region",
@@ -160,8 +160,8 @@
 #'
 #' # Example 6: Removing batch effect using donor as batch
 #' nets_batch_corrected <- runSCORPION(
-#'   countMatrix = scorpionTest$gex,
-#'   tfTargets = scorpionTest$tf,
+#'   gexMatrix = scorpionTest$gex,
+#'   tfMotifs = scorpionTest$tf,
 #'   ppiNet = scorpionTest$ppi,
 #'   cellsMetadata = scorpionTest$metadata,
 #'   groupBy = "region",
@@ -190,8 +190,8 @@
 #' @importFrom dplyr %>% mutate group_by filter bind_rows .data
 #' @importFrom stats reshape model.matrix
 #' @importFrom cli cli_h1 cli_alert_success cli_alert_info cli_abort cli_progress_along
-runSCORPION <- function(countMatrix,
-                        tfTargets,
+runSCORPION <- function(gexMatrix,
+                        tfMotifs,
                         ppiNet,
                         cellsMetadata,
                         groupBy,
@@ -215,8 +215,8 @@ runSCORPION <- function(countMatrix,
                         filterExpr = FALSE
 ) {
   # Input validation
-  if (ncol(countMatrix) != nrow(cellsMetadata)) {
-    cli::cli_abort("countMatrix must have the same number of columns as cellsMetadata has rows")
+  if (ncol(gexMatrix) != nrow(cellsMetadata)) {
+    cli::cli_abort("gexMatrix must have the same number of columns as cellsMetadata has rows")
   }
   if (!all(groupBy %in% colnames(cellsMetadata))) {
     cli::cli_abort("groupBy columns not found in cellsMetadata: {paste(setdiff(groupBy, colnames(cellsMetadata)), collapse=', ')}")
@@ -227,8 +227,8 @@ runSCORPION <- function(countMatrix,
   if (removeBatchEffect && is.null(batch)) {
     cli::cli_abort("batch must be provided when removeBatchEffect = TRUE")
   }
-  if (!is.null(batch) && length(batch) != ncol(countMatrix)) {
-    cli::cli_abort("batch must have the same length as countMatrix columns (cells)")
+  if (!is.null(batch) && length(batch) != ncol(gexMatrix)) {
+    cli::cli_abort("batch must have the same length as gexMatrix columns (cells)")
   }
   if (alphaValue < 0 || alphaValue > 1) {
     cli::cli_abort("alphaValue must be a numeric value between 0 and 1")
@@ -243,7 +243,7 @@ runSCORPION <- function(countMatrix,
     if (showProgress) {
       cli::cli_alert_success("Normalizing data (log scale)")
     }
-    countMatrix <- log_normalize_data(countMatrix)
+    gexMatrix <- log_normalize_data(gexMatrix)
   }
 
   # Removing batch effect
@@ -254,9 +254,9 @@ runSCORPION <- function(countMatrix,
     if (is.null(batch)) {
       cli::cli_abort('batch is needed for batch effect correction')
     }
-    mean_expr <- apply(countMatrix, 1, median)
-    countMatrix <- remove_batch(X = countMatrix, batch = batch)
-    countMatrix <- countMatrix + mean_expr
+    mean_expr <- apply(gexMatrix, 1, median)
+    gexMatrix <- remove_batch(X = gexMatrix, batch = batch)
+    gexMatrix <- gexMatrix + mean_expr
   }
 
   # Setting min number of cells to construct network
@@ -264,7 +264,7 @@ runSCORPION <- function(countMatrix,
 
   if (all(groupBy %in% colnames(cellsMetadata))) {
     collapsedGroup = apply(cellsMetadata[, groupBy, drop = FALSE], 1, function(X) { paste0(X, collapse = '--') })
-    metadata <- data.frame(cell_id = colnames(countMatrix), network_id = collapsedGroup)
+    metadata <- data.frame(cell_id = colnames(gexMatrix), network_id = collapsedGroup)
     metadata <- metadata %>%
       group_by(.data$network_id) %>%
       mutate(n_cells = length(.data$cell_id))
@@ -286,11 +286,11 @@ runSCORPION <- function(countMatrix,
 
     selected_cells <- metadata %>%
       filter(.data$network_id %in% selected_network)
-    selected_cells <- countMatrix[, selected_cells$cell_id]
+    selected_cells <- gexMatrix[, selected_cells$cell_id]
 
     network <- scorpion(
       gexMatrix = selected_cells,
-      tfMotifs = as.data.frame(tfTargets),
+      tfMotifs = as.data.frame(tfMotifs),
       ppiNet = as.data.frame(ppiNet),
       computingEngine = computingEngine,
       nCores = nCores,

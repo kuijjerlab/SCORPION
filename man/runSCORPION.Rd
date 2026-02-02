@@ -5,8 +5,8 @@
 \title{Run SCORPION across cell groups and return combined networks}
 \usage{
 runSCORPION(
-  countMatrix,
-  tfTargets,
+  gexMatrix,
+  tfMotifs,
   ppiNet,
   cellsMetadata,
   groupBy,
@@ -31,9 +31,9 @@ runSCORPION(
 )
 }
 \arguments{
-\item{countMatrix}{An expression dataset with genes in the rows and barcodes (cells) in the columns.}
+\item{gexMatrix}{An expression dataset with genes in the rows and barcodes (cells) in the columns.}
 
-\item{tfTargets}{A motif dataset, a data.frame or a matrix containing 3 columns. Each row describes a motif associated with a transcription factor (column 1) a gene (column 2) and a score (column 3).}
+\item{tfMotifs}{A motif dataset, a data.frame or a matrix containing 3 columns. Each row describes a motif associated with a transcription factor (column 1) a gene (column 2) and a score (column 3).}
 
 \item{ppiNet}{A Protein-Protein-Interaction dataset, a data.frame or matrix containing 3 columns. Each row describes a protein-protein interaction between transcription factor 1 (column 1), transcription factor 2 (column 2) and a score (column 3).}
 
@@ -93,8 +93,8 @@ data(scorpionTest)
 
 # Example 1: Group by single column (region)
 nets_by_region <- runSCORPION(
-  countMatrix = scorpionTest$gex,
-  tfTargets = scorpionTest$tf,
+  gexMatrix = scorpionTest$gex,
+  tfMotifs = scorpionTest$tf,
   ppiNet = scorpionTest$ppi,
   cellsMetadata = scorpionTest$metadata,
   groupBy = "region"
@@ -119,8 +119,8 @@ nets_by_region <- runSCORPION(
 
 # Example 2: Group by single column (donor)
 nets_by_donor <- runSCORPION(
-  countMatrix = scorpionTest$gex,
-  tfTargets = scorpionTest$tf,
+  gexMatrix = scorpionTest$gex,
+  tfMotifs = scorpionTest$tf,
   ppiNet = scorpionTest$ppi,
   cellsMetadata = scorpionTest$metadata,
   groupBy = "donor"
@@ -144,8 +144,8 @@ nets_by_donor <- runSCORPION(
 
 # Example 3: Group by two columns (donor and region)
 nets_by_donor_region <- runSCORPION(
-  countMatrix = scorpionTest$gex,
-  tfTargets = scorpionTest$tf,
+  gexMatrix = scorpionTest$gex,
+  tfMotifs = scorpionTest$tf,
   ppiNet = scorpionTest$ppi,
   cellsMetadata = scorpionTest$metadata,
   groupBy = c("donor", "region")
@@ -169,8 +169,8 @@ nets_by_donor_region <- runSCORPION(
 
 # Example 4: Group by three columns (donor, region, and cell_type)
 nets_by_donor_region_cell_type <- runSCORPION(
-  countMatrix = scorpionTest$gex,
-  tfTargets = scorpionTest$tf,
+  gexMatrix = scorpionTest$gex,
+  tfMotifs = scorpionTest$tf,
   ppiNet = scorpionTest$ppi,
   cellsMetadata = scorpionTest$metadata,
   groupBy = c("donor", "region", "cell_type")
@@ -194,8 +194,8 @@ nets_by_donor_region_cell_type <- runSCORPION(
 
 # Example 5: Using GPU computing engine (if available)
 nets_gpu <- runSCORPION(
-  countMatrix = scorpionTest$gex,
-  tfTargets = scorpionTest$tf,
+  gexMatrix = scorpionTest$gex,
+  tfMotifs = scorpionTest$tf,
   ppiNet = scorpionTest$ppi,
   cellsMetadata = scorpionTest$metadata,
   groupBy = "region",
@@ -220,8 +220,8 @@ nets_gpu <- runSCORPION(
 
 # Example 6: Removing batch effect using donor as batch
 nets_batch_corrected <- runSCORPION(
-  countMatrix = scorpionTest$gex,
-  tfTargets = scorpionTest$tf,
+  gexMatrix = scorpionTest$gex,
+  tfMotifs = scorpionTest$tf,
   ppiNet = scorpionTest$ppi,
   cellsMetadata = scorpionTest$metadata,
   groupBy = "region",

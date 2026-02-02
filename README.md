@@ -107,8 +107,8 @@ str(scorpionOutput)
 The `runSCORPION()` function extends SCORPION by allowing you to build separate gene regulatory networks for cell groups defined by metadata columns. This wrapper automatically handles data grouping, filtering (keeping groups with ≥30 cells by default), and combining results into a wide-format data frame suitable for population-level comparisons.
 
 **Key parameters:**
-- `countMatrix`: Gene expression matrix (genes × cells)
-- `tfTargets`: TF-target motifs with columns [TF, target gene, score]
+- `gexMatrix`: Gene expression matrix (genes × cells)
+- `tfMotifs`: TF-target motifs with columns [TF, target gene, score]
 - `ppiNet`: Protein-protein interactions with columns [protein 1, protein 2, score]
 - `cellsMetadata`: Cell metadata data.frame containing grouping variables
 - `groupBy`: Column name(s) in `cellsMetadata` for grouping cells (creates separate networks for each group)
@@ -125,8 +125,8 @@ The `runSCORPION()` function extends SCORPION by allowing you to build separate 
 ```{R}
 # Build networks grouped by tissue region
 nets_by_region <- runSCORPION(
-  countMatrix = scorpionTest$gex,
-  tfTargets = scorpionTest$tf,
+  gexMatrix = scorpionTest$gex,
+  tfMotifs = scorpionTest$tf,
   ppiNet = scorpionTest$ppi,
   cellsMetadata = scorpionTest$metadata,
   groupBy = "region"
@@ -153,8 +153,8 @@ nets_by_region <- runSCORPION(
 ```{R}
 # Build networks grouped by both donor and region
 nets_by_donor_region <- runSCORPION(
-  countMatrix = scorpionTest$gex,
-  tfTargets = scorpionTest$tf,
+  gexMatrix = scorpionTest$gex,
+  tfMotifs = scorpionTest$tf,
   ppiNet = scorpionTest$ppi,
   cellsMetadata = scorpionTest$metadata,
   groupBy = c("donor", "region")
@@ -181,8 +181,8 @@ nets_by_donor_region <- runSCORPION(
 ```{R}
 # Build networks with batch effect correction using donor as batch
 nets_batch_corrected <- runSCORPION(
-  countMatrix = scorpionTest$gex,
-  tfTargets = scorpionTest$tf,
+  gexMatrix = scorpionTest$gex,
+  tfMotifs = scorpionTest$tf,
   ppiNet = scorpionTest$ppi,
   cellsMetadata = scorpionTest$metadata,
   groupBy = "region",
@@ -212,8 +212,8 @@ nets_batch_corrected <- runSCORPION(
 ```{R}
 # Build networks using GPU acceleration (if available)
 nets_gpu <- runSCORPION(
-  countMatrix = scorpionTest$gex,
-  tfTargets = scorpionTest$tf,
+  gexMatrix = scorpionTest$gex,
+  tfMotifs = scorpionTest$tf,
   ppiNet = scorpionTest$ppi,
   cellsMetadata = scorpionTest$metadata,
   groupBy = "region",
@@ -241,8 +241,8 @@ nets_gpu <- runSCORPION(
 ```{R}
 # Build networks with custom PANDA parameters
 nets_custom <- runSCORPION(
-  countMatrix = scorpionTest$gex,
-  tfTargets = scorpionTest$tf,
+  gexMatrix = scorpionTest$gex,
+  tfMotifs = scorpionTest$tf,
   ppiNet = scorpionTest$ppi,
   cellsMetadata = scorpionTest$metadata,
   groupBy = "region",
