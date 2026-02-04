@@ -1,4 +1,5 @@
 #' @import cli
+#' @importFrom utils getFromNamespace
 runPANDA <- function(motif = NULL, expr = NULL, ppi = NULL, alpha = 0.1, hamming = 0.001, n.cores = 1,
                      iter = NA, output = c("regulatory", "coexpression", "cooperative"),
                      zScale = TRUE, progress = TRUE, randomize = c("None", "within.gene", "by.gene"), assoc.method = "pearson",
@@ -179,11 +180,23 @@ runPANDA <- function(motif = NULL, expr = NULL, ppi = NULL, alpha = 0.1, hamming
   }
 
   if (computing.engine == "gpu") {
-    is_unix <- .Platform$OS.type == "unix"
-    if (is_unix) {
-      tfCoopNetwork <- gpuR::gpuMatrix(as.matrix(tfCoopNetwork))
-      regulatoryNetwork <- gpuR::gpuMatrix(as.matrix(regulatoryNetwork))
-      geneCoreg <- gpuR::gpuMatrix(as.matrix(geneCoreg))
+    gpuR_available <- nzchar(system.file(package = "gpuR"))
+    if (!gpuR_available) {
+      cli::cli_alert_danger("Package 'gpuR' is required for GPU computing but is not installed.")
+      cli::cli_alert_info("Install it with: devtools::install_github('dosorio/gpuR')")
+      cli::cli_alert_info("Falling back to CPU computing.")
+      computing.engine <- "cpu"
+    } else {
+      is_unix <- .Platform$OS.type == "unix"
+      if (is_unix) {
+        gpuMatrix <- getFromNamespace("gpuMatrix", "gpuR")
+        tfCoopNetwork <- gpuMatrix(as.matrix(tfCoopNetwork))
+        regulatoryNetwork <- gpuMatrix(as.matrix(regulatoryNetwork))
+        geneCoreg <- gpuMatrix(as.matrix(geneCoreg))
+      } else {
+        cli::cli_alert_warning("GPU computing only supported on Unix systems. Falling back to CPU.")
+        computing.engine <- "cpu"
+      }
     }
   }
   minusAlpha <- 1 - alpha

@@ -187,8 +187,7 @@
 #' # 6 AEBP2_EED_EZH2_RBBP4_SUZ12  ACKR1 -0.3274770 -0.34475499 -0.12449908
 #' }
 #' @export
-#' @importFrom dplyr %>% mutate group_by filter bind_rows .data
-#' @importFrom stats reshape model.matrix
+#' @importFrom dplyr %>% mutate group_by filter .data
 #' @importFrom cli cli_h1 cli_alert_success cli_alert_info cli_abort cli_progress_along
 runSCORPION <- function(gexMatrix,
                         tfMotifs,
@@ -281,8 +280,8 @@ runSCORPION <- function(gexMatrix,
     cli::cli_alert_success(paste0(filtered_net, " networks meet the minimum cell requirement (", min_cells, ")"))
   }
 
-  compute_network <- function(selected_network) {
-    selected_network <- network_ids[selected_network]
+  compute_network <- function(idx) {
+    selected_network <- network_ids[idx]
 
     selected_cells <- metadata %>%
       filter(.data$network_id %in% selected_network)
@@ -307,9 +306,7 @@ runSCORPION <- function(gexMatrix,
       scaleByPresent = scaleByPresent,
       filterExpr = filterExpr
     )[[outNet]]
-    network <- as.data.frame(as.table(network))
-    colnames(network) <- c("tf", "target", "weights")
-    network$network_id <- selected_network
+    
     return(network)
   }
 
@@ -317,20 +314,34 @@ runSCORPION <- function(gexMatrix,
 
   if (showProgress) {
     cli::cli_alert_info("Computing networks")
-    networks <- lapply(cli_progress_along(network_ids), compute_network)
+    network_matrices <- lapply(cli_progress_along(network_ids), compute_network)
     cli::cli_alert_success("Networks successfully constructed")
   } else {
-    networks <- lapply(seq_along(network_ids), compute_network)
+    network_matrices <- lapply(seq_along(network_ids), compute_network)
   }
 
-  networks <- bind_rows(networks)
-  networks <- reshape(
-    networks,
-    idvar = c("tf", "target"),
-    timevar = "network_id",
-    direction = "wide"
+  # Build TF-target pairs from first network using same method as before
+  first_net <- network_matrices[[1]]
+  tf_target_df <- as.data.frame(as.table(first_net))[, 1:2]
+  colnames(tf_target_df) <- c("tf", "target")
+  
+  # Extract weights as vectors (column-major order matches as.table order)
+  weight_matrix <- vapply(
+    network_matrices,
+    as.vector,
+    numeric(length(first_net))
   )
-  names(networks) <- sub("^weights\\.", "", names(networks))
+  colnames(weight_matrix) <- network_ids
+  
+  # Combine into final data frame
+  networks <- data.frame(
+    tf = as.character(tf_target_df$tf),
+    target = as.character(tf_target_df$target),
+    weight_matrix,
+    stringsAsFactors = FALSE,
+    check.names = FALSE
+  )
+  
   if (showProgress) {
     cli::cli_alert_success("Networks successfully combined")
   }
