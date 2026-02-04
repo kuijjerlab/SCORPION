@@ -1,10 +1,12 @@
 # <img src="https://raw.githubusercontent.com/kuijjerlab/SCORPION/main/inst/logoSCORPION.png" width="30" title="SCORPION"> SCORPION
 
-**SCORPION** (**S**ingle-**C**ell **O**riented **R**econstruction of **P**ANDA **I**ndividually **O**ptimized Gene Regulatory **N**etworks) is an R package that uses coarse-graining of single-cell/nuclei RNA-seq data to reduce sparsity and improve detection of the gene regulatory network's underlying correlation structure. The coarse-grained data is then used to reconstruct gene regulatory networks through the **PANDA** (**P**assing **A**ttributes between **N**etworks for **D**ata **A**ssimilation) message passing algorithm, which integrates protein-protein interactions, gene expression, and sequence motif data to predict regulatory relationships. Thanks to the use of the same baseline priors in each instance, this approach can reconstruct comparable, fully-connected, weighted, and directed transcriptome-wide single-cell gene regulatory networks suitable for use in population-level studies.
+[![CRAN](https://img.shields.io/cran/v/SCORPION)](https://cran.r-project.org/package=SCORPION)
+
+**SCORPION** (**S**ingle-**C**ell **O**riented **R**econstruction of **P**ANDA **I**ndividually **O**ptimized Gene Regulatory **N**etworks) is an R package for constructing gene regulatory networks from single-cell and single-nucleus RNA sequencing data.
+
+The package addresses the sparsity inherent in single-cell expression data through coarse-graining, which aggregates similar cells to improve correlation structure detection. Network reconstruction is performed using the PANDA (Passing Attributes between Networks for Data Assimilation) message-passing algorithm, integrating transcription factor motifs, protein-protein interactions, and gene expression data. By using consistent baseline priors across samples, SCORPION produces comparable, fully-connected, weighted regulatory networks suitable for population-level analyses.
 
 ![method](https://raw.githubusercontent.com/kuijjerlab/SCORPION/main/inst/methodSCORPION.png)
-
----
 
 ## Table of Contents
 
@@ -12,23 +14,29 @@
 - [Quick Start](#quick-start)
 - [Example Data](#example-data)
 - [Core Functions](#core-functions)
-  - [`scorpion()` – Build a Single Network](#scorpion-function)
-  - [`runSCORPION()` – Build Networks by Group](#runscopion-function)
+  - [scorpion](#scorpion)
+  - [runSCORPION](#runscopion)
 - [Statistical Analysis](#statistical-analysis)
-  - [`testEdges()` – Compare Network Edges](#testedges-function)
-  - [`regressEdges()` – Trend Analysis](#regressedges-function)
-- [Parameter Reference](#parameter-reference)
+  - [testEdges](#testedges)
+  - [regressEdges](#regressedges)
 - [Citation](#citation)
+- [Additional Resources](#additional-resources)
 
 ---
 
 ## Installation
 
-SCORPION is available through CRAN:
+SCORPION is available on CRAN:
 
 ```r
 install.packages("SCORPION")
 library(SCORPION)
+```
+
+To install the development version from GitHub:
+
+```r
+devtools::install_github("kuijjerlab/SCORPION")
 ```
 
 ---
@@ -39,14 +47,14 @@ library(SCORPION)
 # Load example data
 data(scorpionTest)
 
-# Build a single network
+# Construct a single regulatory network
 network <- scorpion(
   tfMotifs = scorpionTest$tf,
   gexMatrix = scorpionTest$gex,
   ppiNet = scorpionTest$ppi
 )
 
-# Build networks for each group (e.g., tissue regions)
+# Construct networks stratified by cell groups
 networks <- runSCORPION(
   gexMatrix = scorpionTest$gex,
   tfMotifs = scorpionTest$tf,
@@ -60,16 +68,16 @@ networks <- runSCORPION(
 
 ## Example Data
 
-The package includes `scorpionTest`, a list with four objects:
+The package includes `scorpionTest`, a dataset containing colorectal cancer single-cell RNA-seq data with the following components:
 
 | Object | Type | Description |
 |--------|------|-------------|
-| `gex` | dgCMatrix | Gene expression matrix (genes × cells) |
-| `tf` | data.frame | TF-target motif pairs from dorothea (Human) |
-| `ppi` | data.frame | Protein-protein interactions |
-| `metadata` | data.frame | Cell annotations: `donor`, `region` (T/B/N), `cell_type` |
+| `gex` | dgCMatrix | Gene expression matrix (300 genes × 1,954 cells) |
+| `tf` | data.frame | Transcription factor-target gene motif pairs from DoRothEA |
+| `ppi` | data.frame | Protein-protein interaction network |
+| `metadata` | data.frame | Cell-level annotations including donor, tissue region, and cell type |
 
-> **Region codes:** T = Tumor, B = Border, N = Normal
+**Region codes:** T = Tumor, B = Border (adjacent normal), N = Normal
 
 ```r
 data(scorpionTest)
@@ -77,28 +85,28 @@ str(scorpionTest)
 ```
 
 <details>
-<summary>View output structure</summary>
+<summary>View complete data structure</summary>
 
 ```
 List of 4
- $ gex     :Formal class 'dgCMatrix' [package "Matrix"] with 6 slots
-   ..@ Dim     : int [1:2] 300 1954
-   ..@ Dimnames:List of 2
-   .. ..$ : chr [1:300] "IGHM" "IGHG2" "IGLC3" ...
-   .. ..$ : chr [1:1954] "P31-T_AAACGGGTCGGTTAAC" ...
- $ tf      :'data.frame': 371738 obs. of  3 variables:
-   ..$ source_genesymbol: chr [1:371738] "MYC" "SPI1" ...
-   ..$ target_genesymbol: chr [1:371738] "TERT" "BGLAP" ...
-   ..$ weight           : num [1:371738] 1 1 1 ...
- $ ppi     :'data.frame': 4076 obs. of  3 variables:
-   ..$ source_genesymbol: chr [1:4076] "ZIC1" "HES5" ...
-   ..$ target_genesymbol: chr [1:4076] "ATOH1" "ATOH1" ...
-   ..$ weight           : num [1:4076] 1 1 1 ...
- $ metadata:'data.frame': 1954 obs. of  4 variables:
-   ..$ cell_id  : chr [1:1954] "P31-T_AAACGGGTCGGTTAAC" ...
-   ..$ donor    : chr [1:1954] "P31" "P31" ...
-   ..$ region   : chr [1:1954] "T" "T" ...
-   ..$ cell_type: Factor w/ 1 level "Epithelial": 1 1 ...
+$ gex     :Formal class 'dgCMatrix' [package "Matrix"] with 6 slots
+  ..@ Dim     : int [1:2] 300 1954
+  ..@ Dimnames:List of 2
+  .. ..$ : chr [1:300] "IGHM" "IGHG2" "IGLC3" ...
+  .. ..$ : chr [1:1954] "P31-T_AAACGGGTCGGTTAAC" ...
+$ tf      :'data.frame': 371738 obs. of  3 variables:
+  ..$ source_genesymbol: chr [1:371738] "MYC" "SPI1" ...
+  ..$ target_genesymbol: chr [1:371738] "TERT" "BGLAP" ...
+  ..$ weight           : num [1:371738] 1 1 1 ...
+$ ppi     :'data.frame': 4076 obs. of  3 variables:
+  ..$ source_genesymbol: chr [1:4076] "ZIC1" "HES5" ...
+  ..$ target_genesymbol: chr [1:4076] "ATOH1" "ATOH1" ...
+  ..$ weight           : num [1:4076] 1 1 1 ...
+$ metadata:'data.frame': 1954 obs. of  4 variables:
+  ..$ cell_id  : chr [1:1954] "P31-T_AAACGGGTCGGTTAAC" ...
+  ..$ donor    : chr [1:1954] "P31" "P31" ...
+  ..$ region   : chr [1:1954] "T" "T" ...
+  ..$ cell_type: Factor w/ 1 level "Epithelial": 1 1 ...
 ```
 
 </details>
@@ -107,43 +115,125 @@ List of 4
 
 ## Core Functions
 
-### `scorpion()` Function
+### scorpion
 
-Builds a single gene regulatory network using coarse-graining and the PANDA algorithm.
+Constructs a single gene regulatory network from a gene expression matrix using coarse-graining and the PANDA algorithm.
+
+**Usage:**
 
 ```r
 result <- scorpion(
-  tfMotifs = scorpionTest$tf,
-  gexMatrix = scorpionTest$gex,
-  ppiNet = scorpionTest$ppi,
-  alphaValue = 0.1,      # Weight of prior networks (0-1)
-  gammaValue = 10,       # Coarse-graining level
-  nPC = 25,              # Principal components for kNN
-  assocMethod = "pearson"
+  tfMotifs = NULL,
+  gexMatrix,
+  ppiNet = NULL,
+  computingEngine = "cpu",
+  nCores = 1,
+  gammaValue = 10,
+  nPC = 25,
+  assocMethod = "pearson",
+  alphaValue = 0.1,
+  hammingValue = 0.001,
+  nIter = Inf,
+  outNet = c("regNet", "coregNet", "coopNet"),
+  zScaling = TRUE,
+  showProgress = TRUE,
+  randomizationMethod = "None",
+  scaleByPresent = FALSE,
+  filterExpr = FALSE
 )
 ```
 
-**Returns** a list containing:
+**Parameters:**
+
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| `tfMotifs` | Data frame with columns [TF, target gene, motif score]. Pass `NULL` for co-expression analysis only | NULL |
+| `gexMatrix` | Expression matrix with genes in rows and cells in columns | Required |
+| `ppiNet` | Data frame with columns [protein1, protein2, interaction score]. Pass `NULL` to disable PPI integration | NULL |
+| `computingEngine` | Computation backend: `cpu` or `gpu` | `cpu` |
+| `nCores` | Number of processors for BLAS/MPI parallel computation | 1 |
+| `gammaValue` | Coarse-graining level; ratio of cells to super-cells | 10 |
+| `nPC` | Number of principal components for kNN network construction | 25 |
+| `assocMethod` | Gene association method: `pearson`, `spearman`, or `pcNet` | `pearson` |
+| `alphaValue` | Weight of prior networks relative to expression data (0–1) | 0.1 |
+| `hammingValue` | Convergence threshold based on Hamming distance | 0.001 |
+| `nIter` | Maximum number of PANDA iterations before stopping | Inf |
+| `outNet` | Networks to return: `regNet`, `coregNet`, and/or `coopNet` | All three |
+| `zScaling` | Return Z-score normalized edge weights; `FALSE` returns [0,1] scale | TRUE |
+| `showProgress` | Print progress messages during computation | TRUE |
+| `randomizationMethod` | Randomization for null models: `None`, `within.gene`, or `by.gene` | `None` |
+| `scaleByPresent` | Scale correlations by percentage of cells with non-zero expression | FALSE |
+| `filterExpr` | Remove genes with zero expression across all cells before inference | FALSE |
+
+**Return value:**
+
+A list containing:
 
 | Component | Description |
 |-----------|-------------|
-| `regNet` | Regulatory network matrix (TF → target) |
-| `coregNet` | Co-regulation network (gene-gene) |
-| `coopNet` | Cooperation network (TF-TF) |
-| `numGenes` | Number of genes |
+| `regNet` | Regulatory network matrix (TFs × target genes) |
+| `coregNet` | Co-regulation network matrix (genes × genes) |
+| `coopNet` | TF cooperation network matrix (TFs × TFs) |
+| `numGenes` | Number of genes in the network |
 | `numTFs` | Number of transcription factors |
-| `numEdges` | Total edges in regulatory network |
+| `numEdges` | Total number of edges in the regulatory network |
 
 ---
 
-### `runSCORPION()` Function
+### runSCORPION
 
-Builds separate networks for cell groups defined by metadata columns, returning a wide-format data frame suitable for population-level comparisons.
+Constructs regulatory networks for multiple cell groups defined by metadata columns. This function wraps `scorpion()` to enable stratified network inference and returns results in a format suitable for comparative analysis.
 
-#### Basic Usage
+**Usage:**
 
 ```r
-# Group by single column
+networks <- runSCORPION(
+  gexMatrix,
+  tfMotifs,
+  ppiNet,
+  cellsMetadata,
+  groupBy,
+  normalizeData = TRUE,
+  removeBatchEffect = FALSE,
+  batch = NULL,
+  minCells = 30,
+  ...
+)
+```
+
+**Parameters:**
+
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| `gexMatrix` | Expression matrix with genes in rows and cells in columns | Required |
+| `tfMotifs` | Data frame with columns [TF, target gene, motif score] | Required |
+| `ppiNet` | Data frame with columns [protein1, protein2, interaction score] | Required |
+| `cellsMetadata` | Data frame with cell-level metadata; must contain columns specified in `groupBy` | Required |
+| `groupBy` | Character vector of column name(s) in `cellsMetadata` for stratification | Required |
+| `normalizeData` | Apply log normalization to expression data before network inference | TRUE |
+| `removeBatchEffect` | Perform batch effect correction before network inference | FALSE |
+| `batch` | Factor or vector giving batch assignment for each cell; required if `removeBatchEffect = TRUE` | NULL |
+| `minCells` | Minimum number of cells required per group to build a network | 30 |
+| `...` | Additional parameters passed to `scorpion()` (see above) | — |
+
+**Return value:**
+
+A data frame in wide format where:
+- Rows represent TF-target pairs
+- Columns represent network identifiers (derived from `groupBy` values)
+- Values are edge weights from each network
+
+**Example output:**
+
+| tf | target | P31--T | P31--B | P31--N | P32--T | ... |
+|----|--------|--------|--------|--------|--------|-----|
+| AATF | ACKR1 | -0.326 | -0.337 | -0.344 | -0.298 | ... |
+| ABL1 | ACKR1 | -0.340 | -0.339 | -0.351 | -0.312 | ... |
+
+**Examples:**
+
+```r
+# Stratify by tissue region
 nets_by_region <- runSCORPION(
   gexMatrix = scorpionTest$gex,
   tfMotifs = scorpionTest$tf,
@@ -152,7 +242,7 @@ nets_by_region <- runSCORPION(
   groupBy = "region"
 )
 
-# Group by multiple columns (creates donor-region combinations)
+# Stratify by multiple variables
 nets_by_donor_region <- runSCORPION(
   gexMatrix = scorpionTest$gex,
   tfMotifs = scorpionTest$tf,
@@ -160,18 +250,8 @@ nets_by_donor_region <- runSCORPION(
   cellsMetadata = scorpionTest$metadata,
   groupBy = c("donor", "region")
 )
-```
 
-**Output format:**
-
-| tf | target | P31--T | P31--B | P31--N | P32--T | ... |
-|----|--------|--------|--------|--------|--------|-----|
-| AATF | ACKR1 | -0.326 | -0.337 | -0.344 | -0.298 | ... |
-| ABL1 | ACKR1 | -0.340 | -0.339 | -0.351 | -0.312 | ... |
-
-#### With Batch Correction
-
-```r
+# With batch effect correction
 nets_corrected <- runSCORPION(
   gexMatrix = scorpionTest$gex,
   tfMotifs = scorpionTest$tf,
@@ -183,54 +263,61 @@ nets_corrected <- runSCORPION(
 )
 ```
 
-#### With GPU Acceleration
-
-```r
-nets_gpu <- runSCORPION(
-  gexMatrix = scorpionTest$gex,
-  tfMotifs = scorpionTest$tf,
-  ppiNet = scorpionTest$ppi,
-  cellsMetadata = scorpionTest$metadata,
-  groupBy = "region",
-  computingEngine = "gpu"
-)
-```
-
-#### Custom PANDA Parameters
-
-```r
-nets_custom <- runSCORPION(
-  gexMatrix = scorpionTest$gex,
-  tfMotifs = scorpionTest$tf,
-  ppiNet = scorpionTest$ppi,
-  cellsMetadata = scorpionTest$metadata,
-  groupBy = "region",
-  alphaValue = 0.5,         # Stronger prior influence
-  nPC = 30,                 # More principal components
-  assocMethod = "spearman"  # Rank-based correlation
-)
-```
-
 ---
 
 ## Statistical Analysis
 
-### `testEdges()` Function
+### testEdges
 
-Performs statistical testing on network edges to identify differential regulatory relationships between groups. Uses fully vectorized computations for efficiency with large-scale datasets (millions of edges).
+Performs statistical testing on network edges to identify differential regulatory relationships between groups. The function supports single-sample tests, two-sample comparisons, and paired tests. All computations are fully vectorized for efficiency with large-scale datasets.
 
-**Supports three test types:**
-
-| Test Type | Use Case | Method |
-|-----------|----------|--------|
-| Single-sample | Test if edges differ from zero | One-sample t-test |
-| Two-sample | Compare edges between groups | Welch's t-test |
-| Paired | Compare matched samples | Paired t-test |
-
-#### Two-Sample Comparison
+**Usage:**
 
 ```r
-# Build networks
+results <- testEdges(
+  networksDF,
+  testType = c("single", "two.sample"),
+  group1,
+  group2 = NULL,
+  paired = FALSE,
+  alternative = "two.sided",
+  padjustMethod = "BH",
+  minMeanEdge = 0
+)
+```
+
+**Parameters:**
+
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| `networksDF` | Output from `runSCORPION()` | Required |
+| `testType` | Test type: `single` (one-sample) or `two.sample` | Required |
+| `group1` | Column names for the first (or only) group | Required |
+| `group2` | Column names for the second group (two-sample tests) | NULL |
+| `paired` | Perform paired t-test; requires equal-length groups in matched order | FALSE |
+| `alternative` | Alternative hypothesis: `two.sided`, `greater`, or `less` | `two.sided` |
+| `padjustMethod` | Multiple testing correction method (see `p.adjust`) | `BH` |
+| `minMeanEdge` | Minimum mean absolute edge weight for inclusion | 0 |
+
+**Return value:**
+
+A data frame containing:
+
+| Column | Description |
+|--------|-------------|
+| `tf`, `target` | TF-target pair identifiers |
+| `meanEdge` | Mean edge weight (single-sample) |
+| `meanGroup1`, `meanGroup2` | Group means (two-sample) |
+| `diffMean` | Difference in means, Group1 − Group2 (two-sample) |
+| `log2FoldChange` | Log2 fold change (two-sample) |
+| `tStatistic` | t-statistic |
+| `pValue` | Raw p-value |
+| `pAdj` | Adjusted p-value |
+
+**Examples:**
+
+```r
+# Build networks stratified by donor and region
 nets <- runSCORPION(
   gexMatrix = scorpionTest$gex,
   tfMotifs = scorpionTest$tf,
@@ -239,11 +326,11 @@ nets <- runSCORPION(
   groupBy = c("donor", "region")
 )
 
-# Select groups
+# Define groups
 tumor_nets <- grep("--T$", colnames(nets), value = TRUE)
 normal_nets <- grep("--N$", colnames(nets), value = TRUE)
 
-# Compare Tumor vs Normal
+# Two-sample comparison: Tumor vs Normal
 results <- testEdges(
   networksDF = nets,
   testType = "two.sample",
@@ -251,16 +338,7 @@ results <- testEdges(
   group2 = normal_nets
 )
 
-# Top differential edges
-head(results[order(results$pAdj), ])
-```
-
-#### Paired T-Test (Matched Samples)
-
-When samples are matched (e.g., tumor and normal from the same patient), paired tests are more powerful:
-
-```r
-# Ensure columns are ordered by patient
+# Paired test for matched samples (same patient)
 tumor_ordered <- c("P31--T", "P32--T", "P33--T")
 normal_ordered <- c("P31--N", "P32--N", "P33--N")
 
@@ -271,12 +349,8 @@ results_paired <- testEdges(
   group2 = normal_ordered,
   paired = TRUE
 )
-```
 
-#### Single-Sample Test
-
-```r
-# Test if tumor edges differ from zero
+# Single-sample test: edges differing from zero
 results_single <- testEdges(
   networksDF = nets,
   testType = "single",
@@ -284,108 +358,83 @@ results_single <- testEdges(
 )
 ```
 
-**Output columns:**
+---
+
+### regressEdges
+
+Performs linear regression to identify edges with significant trends across ordered conditions. This is useful for studying disease progression or developmental trajectories.
+
+**Usage:**
+
+```r
+results <- regressEdges(
+  networksDF,
+  orderedGroups,
+  padjustMethod = "BH",
+  minMeanEdge = 0
+)
+```
+
+**Parameters:**
+
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| `networksDF` | Output from `runSCORPION()` | Required |
+| `orderedGroups` | Named list of column name vectors; list order defines progression | Required |
+| `padjustMethod` | Multiple testing correction method | `BH` |
+| `minMeanEdge` | Minimum mean absolute edge weight for inclusion | 0 |
+
+**Return value:**
+
+A data frame containing:
 
 | Column | Description |
 |--------|-------------|
 | `tf`, `target` | TF-target pair identifiers |
-| `meanGroup1`, `meanGroup2` | Group means (two-sample only) |
-| `diffMean` | Difference in means (two-sample only) |
-| `log2FoldChange` | Log2 fold change (two-sample only) |
-| `tStatistic` | Test statistic |
+| `slope` | Regression slope (change per condition step) |
+| `intercept` | Regression intercept |
+| `rSquared` | Coefficient of determination |
+| `fStatistic` | F-statistic for the regression |
 | `pValue` | Raw p-value |
-| `pAdj` | Adjusted p-value (FDR) |
+| `pAdj` | Adjusted p-value |
+| `meanEdge` | Overall mean edge weight |
+| `mean<Condition>` | Mean edge weight for each condition |
 
----
-
-### `regressEdges()` Function
-
-Performs linear regression to identify edges with significant trends across ordered conditions (e.g., disease progression: Normal → Border → Tumor).
+**Example:**
 
 ```r
-# Define progression: Normal → Border → Tumor
+# Define ordered progression: Normal → Border → Tumor
 ordered_conditions <- list(
   Normal = grep("--N$", colnames(nets), value = TRUE),
   Border = grep("--B$", colnames(nets), value = TRUE),
   Tumor = grep("--T$", colnames(nets), value = TRUE)
 )
 
-# Analyze trends
+# Identify edges with significant trends
 results_reg <- regressEdges(
   networksDF = nets,
   orderedGroups = ordered_conditions
 )
 
-# Find edges increasing along progression
+# Edges increasing along progression
 increasing <- results_reg[results_reg$pAdj < 0.05 & results_reg$slope > 0, ]
 
-# Find edges decreasing along progression
+# Edges decreasing along progression
 decreasing <- results_reg[results_reg$pAdj < 0.05 & results_reg$slope < 0, ]
 ```
-
-**Output columns:**
-
-| Column | Description |
-|--------|-------------|
-| `slope` | Change in edge weight per condition step |
-| `intercept` | Regression intercept |
-| `rSquared` | Model fit quality (0-1) |
-| `fStatistic` | F-statistic for regression |
-| `pValue`, `pAdj` | Raw and adjusted p-values |
-| `meanNormal`, `meanBorder`, `meanTumor` | Condition-specific means |
-
----
-
-## Parameter Reference
-
-### Data Preprocessing
-
-| Parameter | Description | Default |
-|-----------|-------------|---------|
-| `normalizeData` | Apply log normalization | `TRUE` |
-| `removeBatchEffect` | Correct for batch effects | `FALSE` |
-| `batch` | Batch assignment vector | — |
-| `filterExpr` | Remove zero-expression genes | `TRUE` |
-
-### Network Construction
-
-| Parameter | Description | Default |
-|-----------|-------------|---------|
-| `gammaValue` | Coarse-graining level (higher = more cells/super-cell) | `10` |
-| `nPC` | Principal components for kNN | `25` |
-| `assocMethod` | Correlation method: `pearson`, `spearman`, `pcNet` | `pearson` |
-
-### PANDA Algorithm
-
-| Parameter | Description | Default |
-|-----------|-------------|---------|
-| `alphaValue` | Prior network weight (0-1) | `0.1` |
-| `hammingValue` | Convergence threshold | `0.001` |
-| `nIter` | Maximum iterations | `Inf` |
-| `zScaling` | Output as Z-scores | `TRUE` |
-
-### Computing
-
-| Parameter | Description | Default |
-|-----------|-------------|---------|
-| `computingEngine` | `cpu` or `gpu` | `cpu` |
-| `nCores` | Processors for BLAS/MPI | `1` |
-
-### Output Options
-
-| Parameter | Description | Default |
-|-----------|-------------|---------|
-| `outNet` | Network type: `regNet`, `coregNet`, `coopNet` | `regNet` |
-| `scaleByPresent` | Scale by % positive samples | `FALSE` |
 
 ---
 
 ## Citation
 
-Osorio, D., Capasso, A., Eckhardt, S.G. et al. Population-level comparisons of gene regulatory networks modeled on high-throughput single-cell transcriptomics data. *Nat Comput Sci* **4**, 237–250 (2024). https://doi.org/10.1038/s43588-024-00597-5
+If you use SCORPION in your research, please cite:
+
+> Osorio, D., Capasso, A., Eckhardt, S.G. et al. Population-level comparisons of gene regulatory networks modeled on high-throughput single-cell transcriptomics data. *Nature Computational Science* **4**, 237–250 (2024). https://doi.org/10.1038/s43588-024-00597-5
 
 ---
 
-## Supplementary Information
+## Additional Resources
 
-For supplementary materials, visit: [SCORPION Supplementary Information](https://github.com/dosorio/SCORPION/)
+- **Supplementary Materials:** [https://github.com/dosorio/SCORPION/](https://github.com/dosorio/SCORPION/)
+- **Issue Tracker:** [https://github.com/kuijjerlab/SCORPION/issues](https://github.com/kuijjerlab/SCORPION/issues)
+- **CRAN Package Page:** [https://cran.r-project.org/package=SCORPION](https://cran.r-project.org/package=SCORPION)
