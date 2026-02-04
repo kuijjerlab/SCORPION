@@ -1,31 +1,12 @@
 # <img src="https://raw.githubusercontent.com/kuijjerlab/SCORPION/main/inst/logoSCORPION.png" width="30" title="SCORPION"> SCORPION
 
-[![CRAN](https://img.shields.io/cran/v/SCORPION)](https://cran.r-project.org/package=SCORPION)
+**SCORPION** (**S**ingle-**C**ell **O**riented **R**econstruction of **P**ANDA **I**ndividually **O**ptimized Gene Regulatory **N**etworks) is an R package for constructing gene regulatory networks from single-cell and single-nucleus RNA sequencing data. The package addresses the sparsity inherent in single-cell expression data through coarse-graining, which aggregates similar cells to improve correlation structure detection. Network reconstruction is performed using the PANDA (Passing Attributes between Networks for Data Assimilation) message-passing algorithm, integrating transcription factor motifs, protein-protein interactions, and gene expression data. By using consistent baseline priors across samples, SCORPION produces comparable, fully-connected, weighted regulatory networks suitable for population-level analyses.
 
-**SCORPION** (**S**ingle-**C**ell **O**riented **R**econstruction of **P**ANDA **I**ndividually **O**ptimized Gene Regulatory **N**etworks) is an R package for constructing gene regulatory networks from single-cell and single-nucleus RNA sequencing data.
-
-The package addresses the sparsity inherent in single-cell expression data through coarse-graining, which aggregates similar cells to improve correlation structure detection. Network reconstruction is performed using the PANDA (Passing Attributes between Networks for Data Assimilation) message-passing algorithm, integrating transcription factor motifs, protein-protein interactions, and gene expression data. By using consistent baseline priors across samples, SCORPION produces comparable, fully-connected, weighted regulatory networks suitable for population-level analyses.
 
 ![method](https://raw.githubusercontent.com/kuijjerlab/SCORPION/main/inst/methodSCORPION.png)
 
-## Table of Contents
-
-- [Installation](#installation)
-- [Quick Start](#quick-start)
-- [Example Data](#example-data)
-- [Core Functions](#core-functions)
-  - [scorpion](#scorpion)
-  - [runSCORPION](#runscopion)
-- [Statistical Analysis](#statistical-analysis)
-  - [testEdges](#testedges)
-  - [regressEdges](#regressedges)
-- [Citation](#citation)
-- [Additional Resources](#additional-resources)
-
----
 
 ## Installation
-
 SCORPION is available on CRAN:
 
 ```r
