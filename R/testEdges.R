@@ -1,4 +1,4 @@
-#' @importFrom stats t.test p.adjust pf
+#' @importFrom stats t.test p.adjust pf model.matrix
 #' @title Test edges from SCORPION networks
 #' @description Performs statistical testing of network edges from runSCORPION output.
 #' Supports single-sample tests (testing if edges differ from zero) and two-sample
