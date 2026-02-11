@@ -263,7 +263,9 @@ results <- testEdges(
   paired = FALSE,
   alternative = "two.sided",
   padjustMethod = "BH",
-  minMeanEdge = 0
+  minLog2FC = 1e-16,
+  moderateVariance = TRUE,
+  empiricalNull = TRUE
 )
 ```
 
@@ -278,7 +280,9 @@ results <- testEdges(
 | `paired` | Perform paired t-test; requires equal-length groups in matched order | FALSE |
 | `alternative` | Alternative hypothesis: `two.sided`, `greater`, or `less` | `two.sided` |
 | `padjustMethod` | Multiple testing correction method (see `p.adjust`) | `BH` |
-| `minMeanEdge` | Minimum mean absolute edge weight for inclusion | 0 |
+| `minLog2FC` | Minimum absolute log2 fold change for inclusion (two-sample/paired only) | 1e-16 |
+| `moderateVariance` | Apply SAM-style variance moderation; adds median(SE) to denominator | TRUE |
+| `empiricalNull` | Use Efron's empirical null (median/MAD) for p-value calibration | TRUE |
 
 **Return value:**
 
@@ -290,6 +294,7 @@ A data frame containing:
 | `meanEdge` | Mean edge weight (single-sample) |
 | `meanGroup1`, `meanGroup2` | Group means (two-sample) |
 | `diffMean` | Difference in means, Group1 − Group2 (two-sample) |
+| `cohensD` | Cohen's d effect size (two-sample and paired tests) |
 | `log2FoldChange` | Log2 fold change (two-sample) |
 | `tStatistic` | t-statistic |
 | `pValue` | Raw p-value |
@@ -359,7 +364,7 @@ results <- regressEdges(
 **Parameters:**
 
 | Parameter | Description | Default |
-|-----------|-------------|---------|
+|-----------|-------------|---------||
 | `networksDF` | Output from `runSCORPION()` | Required |
 | `orderedGroups` | Named list of column name vectors; list order defines progression | Required |
 | `padjustMethod` | Multiple testing correction method | `BH` |

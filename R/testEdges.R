@@ -23,9 +23,21 @@
 #' @param padjustMethod Character specifying the p-value adjustment method for multiple
 #'   testing correction. See \code{\link[stats]{p.adjust}} for options. Default "BH"
 #'   (Benjamini-Hochberg FDR).
-#' @param minMeanEdge Numeric threshold for minimum mean absolute edge weight to
-#'   include in testing. Edges with mean absolute weight below this threshold are
-#'   excluded. Default 0 (no filtering).
+#' @param minLog2FC Numeric threshold for minimum absolute log2 fold change to
+#'   include in testing. For two-sample and paired tests, edges with |log2FoldChange|
+#'   below this threshold are excluded. Not applicable for single-sample tests.
+#'   Default 1e-16.
+#' @param moderateVariance Logical indicating whether to apply SAM-style variance
+#'   moderation. When TRUE, adds a fudge factor (s0, the median of all standard errors)
+#'   to the denominator of the t-statistic. This prevents edges with very small variance
+#'   from producing extreme t-statistics, resulting in volcano plots more similar to
+#'   limma output. Default TRUE.
+#' @param empiricalNull Logical indicating whether to estimate the null distribution
+#'   empirically from the observed t-statistics. When TRUE, uses the median and MAD
+#'   (median absolute deviation) of all t-statistics to recenter and rescale them,
+#'   then computes p-values from the standard normal. This is Efron's empirical null
+#'   correction (as in locfdr) and is essential when testing millions of correlated
+#'   edges. Runs in O(n) time. Default TRUE.
 #' @return A data.frame containing:
 #'   \itemize{
 #'     \item{tf: Transcription factor}
@@ -34,7 +46,7 @@
 #'     \item{tStatistic: Test statistic}
 #'     \item{pValue: Raw p-value}
 #'     \item{pAdj: Adjusted p-value}
-#'     \item{For two-sample tests: meanGroup1, meanGroup2, diffMean (Group1 - Group2), log2FoldChange}
+#'     \item{For two-sample tests: meanGroup1, meanGroup2, diffMean (Group1 - Group2), cohensD, log2FoldChange}
 #'   }
 #' @details
 #' For single-sample tests, the function tests whether the mean edge weight across
@@ -97,13 +109,13 @@
 #'   group2 = normal_nets
 #' )
 #'
-#' # Filter by minimum edge weight for focused analysis
+#' # Filter by minimum log2 fold change for focused analysis
 #' results_filtered <- testEdges(
 #'   networksDF = nets,
 #'   testType = "two.sample",
 #'   group1 = tumor_nets,
 #'   group2 = normal_nets,
-#'   minMeanEdge = 0.1  # Only test edges with |mean| >= 0.1
+#'   minLog2FC = 0.5  # Only test edges with |log2FoldChange| >= 0.5
 #' )
 #'
 #' # Paired t-test: Compare matched Tumor vs Normal samples (same patient)
@@ -119,7 +131,7 @@
 #' )
 #' }
 #' @export
-#' @importFrom stats pt p.adjust var sd
+#' @importFrom stats pt p.adjust var sd qnorm pnorm mad median
 testEdges <- function(networksDF,
                       testType = c("single", "two.sample"),
                       group1,
@@ -127,7 +139,9 @@ testEdges <- function(networksDF,
                       paired = FALSE,
                       alternative = c("two.sided", "greater", "less"),
                       padjustMethod = "BH",
-                      minMeanEdge = 0) {
+                      minLog2FC = 1e-16,
+                      moderateVariance = TRUE,
+                      empiricalNull = TRUE) {
   
   # Input validation
   testType <- match.arg(testType)
@@ -173,7 +187,7 @@ testEdges <- function(networksDF,
       networksDF = networksDF,
       group1 = group1,
       alternative = alternative,
-      minMeanEdge = minMeanEdge
+      moderateVariance = moderateVariance
     )
   } else if (paired) {
     results <- testEdgesPaired(
@@ -181,7 +195,8 @@ testEdges <- function(networksDF,
       group1 = group1,
       group2 = group2,
       alternative = alternative,
-      minMeanEdge = minMeanEdge
+      minLog2FC = minLog2FC,
+      moderateVariance = moderateVariance
     )
   } else {
     results <- testEdgesTwoSample(
@@ -189,8 +204,33 @@ testEdges <- function(networksDF,
       group1 = group1,
       group2 = group2,
       alternative = alternative,
-      minMeanEdge = minMeanEdge
+      minLog2FC = minLog2FC,
+      moderateVariance = moderateVariance
     )
+  }
+  
+  # Apply empirical null correction (Efron's method) - O(n) time
+  if (empiricalNull) {
+    t_stats <- results$tStatistic
+    valid_idx <- !is.na(t_stats) & is.finite(t_stats)
+    
+    if (sum(valid_idx) > 100) {
+      # Estimate null distribution using median and MAD (robust to outliers)
+      null_center <- median(t_stats[valid_idx])
+      null_scale <- mad(t_stats[valid_idx], constant = 1.4826)  # scaled to match SD for normal
+      
+      if (null_scale > 0) {
+        # Standardize t-statistics to empirical null
+        z_stats <- (t_stats - null_center) / null_scale
+        
+        # Recompute p-values using standard normal
+        results$pValue <- switch(alternative,
+          "two.sided" = 2 * pnorm(abs(z_stats), lower.tail = FALSE),
+          "greater" = pnorm(z_stats, lower.tail = FALSE),
+          "less" = pnorm(z_stats, lower.tail = TRUE)
+        )
+      }
+    }
   }
   
   # Adjust p-values
@@ -202,7 +242,8 @@ testEdges <- function(networksDF,
 }
 
 #' @keywords internal
-testEdgesSingle <- function(networksDF, group1, alternative, minMeanEdge) {
+testEdgesSingle <- function(networksDF, group1, alternative, 
+                            moderateVariance = TRUE) {
   
   # Extract edge weights for group1
   edge_data <- networksDF[, group1, drop = FALSE]
@@ -211,11 +252,8 @@ testEdgesSingle <- function(networksDF, group1, alternative, minMeanEdge) {
   # Calculate mean edge weight
   meanEdge <- rowMeans(edge_matrix, na.rm = TRUE)
   
-  # Filter by minimum mean edge weight
-  keep_idx <- abs(meanEdge) >= minMeanEdge
-  edge_matrix <- edge_matrix[keep_idx, , drop = FALSE]
-  meanEdge <- meanEdge[keep_idx]
-  tf_target <- networksDF[keep_idx, c("tf", "target")]
+  # No filtering for single-sample tests (minLog2FC not applicable)
+  tf_target <- networksDF[, c("tf", "target")]
   
   # Vectorized one-sample t-test computation
   # Calculate statistics for all edges at once
@@ -227,9 +265,18 @@ testEdgesSingle <- function(networksDF, group1, alternative, minMeanEdge) {
   # Calculate standard deviation per row (using only non-NA values)
   sd_edge <- apply(edge_matrix, 1, sd, na.rm = TRUE)
   
-  # Calculate t-statistic: t = (mean - mu) / (sd / sqrt(n))
+  # Calculate standard error
+  se <- sd_edge / sqrt(n_valid)
+  
+  # Apply SAM-style variance moderation if requested
+  if (moderateVariance) {
+    s0 <- median(se, na.rm = TRUE)
+    se <- se + s0
+  }
+  
+  # Calculate t-statistic: t = (mean - mu) / se
   # For one-sample test against mu = 0
-  test_stats <- meanEdge / (sd_edge / sqrt(n_valid))
+  test_stats <- meanEdge / se
   
   # Calculate p-values from t-distribution
   # df = n - 1
@@ -242,7 +289,8 @@ testEdgesSingle <- function(networksDF, group1, alternative, minMeanEdge) {
   )
   
   # Set NA for edges with insufficient data
-  insufficient_data <- n_valid < 2 | is.na(sd_edge) | sd_edge == 0
+  # When moderateVariance is TRUE, se=0 is still valid because s0 is added
+  insufficient_data <- n_valid < 2 | is.na(sd_edge) | (!moderateVariance & sd_edge == 0)
   test_stats[insufficient_data] <- NA
   pvalues[insufficient_data] <- NA
   
@@ -260,7 +308,8 @@ testEdgesSingle <- function(networksDF, group1, alternative, minMeanEdge) {
 }
 
 #' @keywords internal
-testEdgesTwoSample <- function(networksDF, group1, group2, alternative, minMeanEdge) {
+testEdgesTwoSample <- function(networksDF, group1, group2, alternative, minLog2FC,
+                               moderateVariance = TRUE) {
   
   # Extract edge weights for both groups
   edge_data1 <- networksDF[, group1, drop = FALSE]
@@ -274,14 +323,20 @@ testEdgesTwoSample <- function(networksDF, group1, group2, alternative, minMeanE
   meanEdge <- (meanEdge1 + meanEdge2) / 2
   diffMean <- meanEdge1 - meanEdge2
   
-  # Filter by minimum mean edge weight
-  keep_idx <- abs(meanEdge) >= minMeanEdge
+  # Calculate log2 fold change from quantiles (needed for filtering)
+  # Convert z-scores to quantiles using pnorm with log.p=TRUE for precision
+  # log2(q1/q2) = (log(q1) - log(q2)) / log(2)
+  log2FC <- (pnorm(meanEdge1, log.p = TRUE) - pnorm(meanEdge2, log.p = TRUE)) / log(2)
+  
+  # Filter by minimum log2 fold change
+  keep_idx <- abs(log2FC) >= minLog2FC
   edge_matrix1 <- edge_matrix1[keep_idx, , drop = FALSE]
   edge_matrix2 <- edge_matrix2[keep_idx, , drop = FALSE]
   meanEdge1 <- meanEdge1[keep_idx]
   meanEdge2 <- meanEdge2[keep_idx]
   meanEdge <- meanEdge[keep_idx]
   diffMean <- diffMean[keep_idx]
+  log2FC <- log2FC[keep_idx]
   tf_target <- networksDF[keep_idx, c("tf", "target")]
   
   # Vectorized two-sample t-test computation (Welch's t-test)
@@ -295,6 +350,13 @@ testEdgesTwoSample <- function(networksDF, group1, group2, alternative, minMeanE
   
   # Calculate Welch's t-statistic: t = (mean1 - mean2) / sqrt(var1/n1 + var2/n2)
   se <- sqrt(var1/n1 + var2/n2)
+  
+  # Apply SAM-style variance moderation if requested
+  if (moderateVariance) {
+    s0 <- median(se, na.rm = TRUE)
+    se <- se + s0
+  }
+  
   test_stats <- diffMean / se
   
   # Calculate degrees of freedom (Welch-Satterthwaite equation)
@@ -308,38 +370,23 @@ testEdgesTwoSample <- function(networksDF, group1, group2, alternative, minMeanE
   )
   
   # Set NA for edges with insufficient data
+  # When moderateVariance is TRUE, var=0 is still valid because s0 is added
+  se_before_mod <- sqrt(var1/n1 + var2/n2)
   insufficient_data <- n1 < 2 | n2 < 2 | is.na(var1) | is.na(var2) | 
-                       var1 == 0 | var2 == 0 | se == 0 | is.na(se)
+                       (!moderateVariance & (var1 == 0 | var2 == 0 | se_before_mod == 0)) | is.na(se)
   test_stats[insufficient_data] <- NA
   pvalues[insufficient_data] <- NA
   df[insufficient_data] <- NA
   
-  # Calculate log2 fold change
-  # Initialize with NA
-  log2FC <- rep(NA_real_, length(meanEdge1))
+  # log2FC was already calculated before filtering
   
-  # Define threshold for near-zero values
-  epsilon <- 1e-16
-  
-  # Case 1: Both groups are positive and non-zero
-  idx_both_pos <- meanEdge1 > epsilon & meanEdge2 > epsilon
-  if (any(idx_both_pos, na.rm = TRUE)) {
-    log2FC[idx_both_pos] <- log2(meanEdge1[idx_both_pos] / meanEdge2[idx_both_pos])
-  }
-  
-  # Case 2: Both groups are negative and non-zero
-  idx_both_neg <- meanEdge1 < -epsilon & meanEdge2 < -epsilon
-  if (any(idx_both_neg, na.rm = TRUE)) {
-    log2FC[idx_both_neg] <- log2(abs(meanEdge1[idx_both_neg]) / abs(meanEdge2[idx_both_neg]))
-  }
-  
-  # Case 3: Mixed signs but both non-zero
-  idx_mixed <- abs(meanEdge1) > epsilon & abs(meanEdge2) > epsilon & 
-               !(idx_both_pos | idx_both_neg)
-  if (any(idx_mixed, na.rm = TRUE)) {
-    log2FC[idx_mixed] <- sign(diffMean[idx_mixed]) * 
-                         log2(abs(meanEdge1[idx_mixed]) / abs(meanEdge2[idx_mixed]))
-  }
+  # Calculate Cohen's d (standardized effect size)
+  # d = (mean1 - mean2) / pooled_sd
+  # pooled_sd = sqrt(((n1-1)*var1 + (n2-1)*var2) / (n1+n2-2))
+  pooled_var <- ((n1 - 1) * var1 + (n2 - 1) * var2) / (n1 + n2 - 2)
+  pooled_sd <- sqrt(pooled_var)
+  cohensD <- diffMean / pooled_sd
+  cohensD[pooled_sd == 0 | is.na(pooled_sd)] <- NA
   
   # Compile results
   results <- data.frame(
@@ -348,6 +395,7 @@ testEdgesTwoSample <- function(networksDF, group1, group2, alternative, minMeanE
     meanGroup1 = meanEdge1,
     meanGroup2 = meanEdge2,
     diffMean = diffMean,
+    cohensD = cohensD,
     log2FoldChange = log2FC,
     meanEdge = meanEdge,
     tStatistic = test_stats,
@@ -359,7 +407,8 @@ testEdgesTwoSample <- function(networksDF, group1, group2, alternative, minMeanE
 }
 
 #' @keywords internal
-testEdgesPaired <- function(networksDF, group1, group2, alternative, minMeanEdge) {
+testEdgesPaired <- function(networksDF, group1, group2, alternative, minLog2FC,
+                            moderateVariance = TRUE) {
   
   # Extract edge weights for both groups
   edge_data1 <- networksDF[, group1, drop = FALSE]
@@ -376,8 +425,13 @@ testEdgesPaired <- function(networksDF, group1, group2, alternative, minMeanEdge
   diff_matrix <- edge_matrix1 - edge_matrix2
   diffMean <- rowMeans(diff_matrix, na.rm = TRUE)
   
-  # Filter by minimum mean edge weight
-  keep_idx <- abs(meanEdge) >= minMeanEdge
+  # Calculate log2 fold change from quantiles (needed for filtering)
+  # Convert z-scores to quantiles using pnorm with log.p=TRUE for precision
+  # log2(q1/q2) = (log(q1) - log(q2)) / log(2)
+  log2FC <- (pnorm(meanEdge1, log.p = TRUE) - pnorm(meanEdge2, log.p = TRUE)) / log(2)
+  
+  # Filter by minimum log2 fold change
+  keep_idx <- abs(log2FC) >= minLog2FC
   diff_matrix <- diff_matrix[keep_idx, , drop = FALSE]
   edge_matrix1 <- edge_matrix1[keep_idx, , drop = FALSE]
   edge_matrix2 <- edge_matrix2[keep_idx, , drop = FALSE]
@@ -385,6 +439,7 @@ testEdgesPaired <- function(networksDF, group1, group2, alternative, minMeanEdge
   meanEdge2 <- meanEdge2[keep_idx]
   meanEdge <- meanEdge[keep_idx]
   diffMean <- diffMean[keep_idx]
+  log2FC <- log2FC[keep_idx]
   tf_target <- networksDF[keep_idx, c("tf", "target")]
   
   # Vectorized paired t-test computation
@@ -398,8 +453,17 @@ testEdgesPaired <- function(networksDF, group1, group2, alternative, minMeanEdge
   # Calculate standard deviation of differences
   sd_diff <- apply(diff_matrix, 1, sd, na.rm = TRUE)
   
+  # Calculate standard error
+  se <- sd_diff / sqrt(n_valid)
+  
+  # Apply SAM-style variance moderation if requested
+  if (moderateVariance) {
+    s0 <- median(se, na.rm = TRUE)
+    se <- se + s0
+  }
+  
   # Calculate t-statistic
-  test_stats <- diffMean / (sd_diff / sqrt(n_valid))
+  test_stats <- diffMean / se
   
   # Calculate degrees of freedom: df = n - 1
   df <- n_valid - 1
@@ -412,33 +476,17 @@ testEdgesPaired <- function(networksDF, group1, group2, alternative, minMeanEdge
   )
   
   # Set NA for edges with insufficient data
-  insufficient_data <- n_valid < 2 | is.na(sd_diff) | sd_diff == 0
+  # When moderateVariance is TRUE, sd_diff=0 is still valid because s0 is added
+  insufficient_data <- n_valid < 2 | is.na(sd_diff) | (!moderateVariance & sd_diff == 0)
   test_stats[insufficient_data] <- NA
   pvalues[insufficient_data] <- NA
   
-  # Calculate log2 fold change
-  log2FC <- rep(NA_real_, length(meanEdge1))
-  epsilon <- 1e-16
+  # log2FC was already calculated before filtering
   
-  # Case 1: Both groups are positive and non-zero
-  idx_both_pos <- meanEdge1 > epsilon & meanEdge2 > epsilon
-  if (any(idx_both_pos, na.rm = TRUE)) {
-    log2FC[idx_both_pos] <- log2(meanEdge1[idx_both_pos] / meanEdge2[idx_both_pos])
-  }
-  
-  # Case 2: Both groups are negative and non-zero
-  idx_both_neg <- meanEdge1 < -epsilon & meanEdge2 < -epsilon
-  if (any(idx_both_neg, na.rm = TRUE)) {
-    log2FC[idx_both_neg] <- log2(abs(meanEdge1[idx_both_neg]) / abs(meanEdge2[idx_both_neg]))
-  }
-  
-  # Case 3: Mixed signs but both non-zero
-  idx_mixed <- abs(meanEdge1) > epsilon & abs(meanEdge2) > epsilon & 
-               !(idx_both_pos | idx_both_neg)
-  if (any(idx_mixed, na.rm = TRUE)) {
-    log2FC[idx_mixed] <- sign(diffMean[idx_mixed]) * 
-                         log2(abs(meanEdge1[idx_mixed]) / abs(meanEdge2[idx_mixed]))
-  }
+  # Calculate Cohen's d for paired data
+  # d = mean(diff) / sd(diff)
+  cohensD <- diffMean / sd_diff
+  cohensD[sd_diff == 0 | is.na(sd_diff)] <- NA
   
   # Compile results
   results <- data.frame(
@@ -447,6 +495,7 @@ testEdgesPaired <- function(networksDF, group1, group2, alternative, minMeanEdge
     meanGroup1 = meanEdge1,
     meanGroup2 = meanEdge2,
     diffMean = diffMean,
+    cohensD = cohensD,
     log2FoldChange = log2FC,
     meanEdge = meanEdge,
     tStatistic = test_stats,

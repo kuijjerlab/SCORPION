@@ -12,7 +12,9 @@ testEdges(
   paired = FALSE,
   alternative = c("two.sided", "greater", "less"),
   padjustMethod = "BH",
-  minMeanEdge = 0
+  minLog2FC = 1e-16,
+  moderateVariance = TRUE,
+  empiricalNull = TRUE
 )
 }
 \arguments{
@@ -43,9 +45,23 @@ such as Tumor vs Normal from the same patient.}
 testing correction. See \code{\link[stats]{p.adjust}} for options. Default "BH"
 (Benjamini-Hochberg FDR).}
 
-\item{minMeanEdge}{Numeric threshold for minimum mean absolute edge weight to
-include in testing. Edges with mean absolute weight below this threshold are
-excluded. Default 0 (no filtering).}
+\item{minLog2FC}{Numeric threshold for minimum absolute log2 fold change to
+include in testing. For two-sample and paired tests, edges with |log2FoldChange|
+below this threshold are excluded. Not applicable for single-sample tests.
+Default 1e-16.}
+
+\item{moderateVariance}{Logical indicating whether to apply SAM-style variance
+moderation. When TRUE, adds a fudge factor (s0, the median of all standard errors)
+to the denominator of the t-statistic. This prevents edges with very small variance
+from producing extreme t-statistics, resulting in volcano plots more similar to
+limma output. Default TRUE.}
+
+\item{empiricalNull}{Logical indicating whether to estimate the null distribution
+empirically from the observed t-statistics. When TRUE, uses the median and MAD
+(median absolute deviation) of all t-statistics to recenter and rescale them,
+then computes p-values from the standard normal. This is Efron's empirical null
+correction (as in locfdr) and is essential when testing millions of correlated
+edges. Runs in O(n) time. Default TRUE.}
 }
 \value{
 A data.frame containing:
@@ -56,7 +72,7 @@ A data.frame containing:
     \item{tStatistic: Test statistic}
     \item{pValue: Raw p-value}
     \item{pAdj: Adjusted p-value}
-    \item{For two-sample tests: meanGroup1, meanGroup2, diffMean (Group1 - Group2), log2FoldChange}
+    \item{For two-sample tests: meanGroup1, meanGroup2, diffMean (Group1 - Group2), cohensD, log2FoldChange}
   }
 }
 \description{
@@ -126,13 +142,13 @@ results_tumor_vs_normal <- testEdges(
   group2 = normal_nets
 )
 
-# Filter by minimum edge weight for focused analysis
+# Filter by minimum log2 fold change for focused analysis
 results_filtered <- testEdges(
   networksDF = nets,
   testType = "two.sample",
   group1 = tumor_nets,
   group2 = normal_nets,
-  minMeanEdge = 0.1  # Only test edges with |mean| >= 0.1
+  minLog2FC = 0.5  # Only test edges with |log2FoldChange| >= 0.5
 )
 
 # Paired t-test: Compare matched Tumor vs Normal samples (same patient)

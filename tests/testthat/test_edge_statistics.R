@@ -104,7 +104,9 @@ test_that("testEdges single-sample t-statistic matches t.test()", {
   results <- testEdges(
     networksDF = mock$df,
     testType = "single",
-    group1 = mock$group1
+    group1 = mock$group1,
+    moderateVariance = FALSE,
+    empiricalNull = FALSE
   )
   
   # Compare with t.test for first 10 edges
@@ -136,7 +138,9 @@ test_that("testEdges single-sample one-sided tests match t.test()", {
     networksDF = mock$df,
     testType = "single",
     group1 = mock$group1,
-    alternative = "greater"
+    alternative = "greater",
+    moderateVariance = FALSE,
+    empiricalNull = FALSE
   )
   
   # Test "less" alternative
@@ -144,7 +148,9 @@ test_that("testEdges single-sample one-sided tests match t.test()", {
     networksDF = mock$df,
     testType = "single",
     group1 = mock$group1,
-    alternative = "less"
+    alternative = "less",
+    moderateVariance = FALSE,
+    empiricalNull = FALSE
   )
   
   # Compare with t.test for first 5 edges
@@ -180,7 +186,9 @@ test_that("testEdges two-sample t-statistic matches t.test() Welch", {
     networksDF = mock$df,
     testType = "two.sample",
     group1 = mock$group1,
-    group2 = mock$group2
+    group2 = mock$group2,
+    moderateVariance = FALSE,
+    empiricalNull = FALSE
   )
   
   # Compare with t.test for first 10 edges
@@ -214,7 +222,9 @@ test_that("testEdges two-sample one-sided tests match t.test()", {
     testType = "two.sample",
     group1 = mock$group1,
     group2 = mock$group2,
-    alternative = "greater"
+    alternative = "greater",
+    moderateVariance = FALSE,
+    empiricalNull = FALSE
   )
   
   # Test "less" alternative
@@ -223,7 +233,9 @@ test_that("testEdges two-sample one-sided tests match t.test()", {
     testType = "two.sample",
     group1 = mock$group1,
     group2 = mock$group2,
-    alternative = "less"
+    alternative = "less",
+    moderateVariance = FALSE,
+    empiricalNull = FALSE
   )
   
   # Compare with t.test for first 5 edges
@@ -255,7 +267,9 @@ test_that("testEdges two-sample mean difference is correct", {
     networksDF = mock$df,
     testType = "two.sample",
     group1 = mock$group1,
-    group2 = mock$group2
+    group2 = mock$group2,
+    moderateVariance = FALSE,
+    empiricalNull = FALSE
   )
   
   # Check mean differences for first 10 edges
@@ -341,7 +355,9 @@ test_that("testEdges paired t-statistic matches t.test(paired = TRUE)", {
     testType = "two.sample",
     group1 = mock$group1,
     group2 = mock$group2,
-    paired = TRUE
+    paired = TRUE,
+    moderateVariance = FALSE,
+    empiricalNull = FALSE
   )
   
   # Compare with t.test(paired = TRUE) for first 15 edges
@@ -379,7 +395,9 @@ test_that("testEdges paired one-sided tests match t.test(paired = TRUE)", {
     group1 = mock$group1,
     group2 = mock$group2,
     paired = TRUE,
-    alternative = "greater"
+    alternative = "greater",
+    moderateVariance = FALSE,
+    empiricalNull = FALSE
   )
   
   # Test "less" alternative
@@ -389,7 +407,9 @@ test_that("testEdges paired one-sided tests match t.test(paired = TRUE)", {
     group1 = mock$group1,
     group2 = mock$group2,
     paired = TRUE,
-    alternative = "less"
+    alternative = "less",
+    moderateVariance = FALSE,
+    empiricalNull = FALSE
   )
   
   # Compare with t.test for first 10 edges
@@ -424,7 +444,9 @@ test_that("testEdges paired mean difference is correct", {
     testType = "two.sample",
     group1 = mock$group1,
     group2 = mock$group2,
-    paired = TRUE
+    paired = TRUE,
+    moderateVariance = FALSE,
+    empiricalNull = FALSE
   )
   
   # Check that diffMean equals mean of differences (not difference of means)
@@ -452,7 +474,9 @@ test_that("testEdges paired vs unpaired gives different results", {
     testType = "two.sample",
     group1 = mock$group1,
     group2 = mock$group2,
-    paired = TRUE
+    paired = TRUE,
+    moderateVariance = FALSE,
+    empiricalNull = FALSE
   )
   
   results_unpaired <- testEdges(
@@ -460,7 +484,9 @@ test_that("testEdges paired vs unpaired gives different results", {
     testType = "two.sample",
     group1 = mock$group1,
     group2 = mock$group2,
-    paired = FALSE
+    paired = FALSE,
+    moderateVariance = FALSE,
+    empiricalNull = FALSE
   )
   
   # Results should be different (paired test accounts for within-subject correlation)
@@ -510,7 +536,9 @@ test_that("testEdges paired handles NA values correctly", {
     testType = "two.sample",
     group1 = mock$group1,
     group2 = mock$group2,
-    paired = TRUE
+    paired = TRUE,
+    moderateVariance = FALSE,
+    empiricalNull = FALSE
   )
   
   # Edge 1 should have n_pairs - 1 valid pairs
@@ -674,7 +702,9 @@ test_that("testEdges handles NA values correctly", {
   results <- testEdges(
     networksDF = mock$df,
     testType = "single",
-    group1 = mock$group1
+    group1 = mock$group1,
+    moderateVariance = FALSE,
+    empiricalNull = FALSE
   )
   
   # Edge 1: should have n-1 valid samples
@@ -698,7 +728,9 @@ test_that("testEdges handles constant values (zero variance)", {
   results <- testEdges(
     networksDF = mock$df,
     testType = "single",
-    group1 = mock$group1
+    group1 = mock$group1,
+    moderateVariance = FALSE,
+    empiricalNull = FALSE
   )
   
   result1 <- results[results$tf == mock$df$tf[1] & 
@@ -717,7 +749,8 @@ test_that("p-value adjustment is applied correctly", {
     networksDF = mock$df,
     testType = "single",
     group1 = mock$group1,
-    padjustMethod = "BH"
+    padjustMethod = "BH",
+    empiricalNull = FALSE
   )
   
   # Manually calculate adjusted p-values
@@ -726,26 +759,32 @@ test_that("p-value adjustment is applied correctly", {
   expect_equal(results$pAdj, expected_padj, tolerance = 1e-10)
 })
 
-test_that("minMeanEdge filter works correctly", {
+test_that("minLog2FC filter works correctly for two-sample tests", {
   mock <- create_mock_network()
   
   results_all <- testEdges(
     networksDF = mock$df,
-    testType = "single",
+    testType = "two.sample",
     group1 = mock$group1,
-    minMeanEdge = 0
+    group2 = mock$group2,
+    minLog2FC = 1e-16,
+    empiricalNull = FALSE
   )
   
   results_filtered <- testEdges(
     networksDF = mock$df,
-    testType = "single",
+    testType = "two.sample",
     group1 = mock$group1,
-    minMeanEdge = 0.3
+    group2 = mock$group2,
+    minLog2FC = 0.1,
+    empiricalNull = FALSE
   )
   
-  # Filtered results should have fewer rows
+  # Filtered results should have fewer or equal rows
   expect_true(nrow(results_filtered) <= nrow(results_all))
   
-  # All filtered edges should have |meanEdge| >= 0.3
-  expect_true(all(abs(results_filtered$meanEdge) >= 0.3))
+  # For two-sample tests, filters by |log2FoldChange| >= 0.1
+  if (nrow(results_filtered) > 0) {
+    expect_true(all(abs(results_filtered$log2FoldChange) >= 0.1))
+  }
 })
