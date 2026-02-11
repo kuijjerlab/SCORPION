@@ -12,7 +12,7 @@ testEdges(
   paired = FALSE,
   alternative = c("two.sided", "greater", "less"),
   padjustMethod = "BH",
-  minLog2FC = 1e-16,
+  minLog2FC = 0,
   moderateVariance = TRUE,
   empiricalNull = TRUE
 )
@@ -48,7 +48,7 @@ testing correction. See \code{\link[stats]{p.adjust}} for options. Default "BH"
 \item{minLog2FC}{Numeric threshold for minimum absolute log2 fold change to
 include in testing. For two-sample and paired tests, edges with |log2FoldChange|
 below this threshold are excluded. Not applicable for single-sample tests.
-Default 1e-16.}
+Default 0.}
 
 \item{moderateVariance}{Logical indicating whether to apply SAM-style variance
 moderation. When TRUE, adds a fudge factor (s0, the median of all standard errors)

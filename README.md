@@ -195,7 +195,8 @@ networks <- runSCORPION(
 | `removeBatchEffect` | Perform batch effect correction before network inference | FALSE |
 | `batch` | Factor or vector giving batch assignment for each cell; required if `removeBatchEffect = TRUE` | NULL |
 | `minCells` | Minimum number of cells required per group to build a network | 30 |
-| `...` | Additional parameters passed to `scorpion()` (see above) | — |
+
+**Additional parameters:** All `scorpion()` parameters (`computingEngine`, `nCores`, `gammaValue`, `nPC`, `assocMethod`, `alphaValue`, `hammingValue`, `nIter`, `outNet`, `zScaling`, `showProgress`, `randomizationMethod`, `scaleByPresent`, `filterExpr`) can be passed to control network inference behavior. See `scorpion()` documentation above.
 
 **Return value:**
 
@@ -280,7 +281,7 @@ results <- testEdges(
 | `paired` | Perform paired t-test; requires equal-length groups in matched order | FALSE |
 | `alternative` | Alternative hypothesis: `two.sided`, `greater`, or `less` | `two.sided` |
 | `padjustMethod` | Multiple testing correction method (see `p.adjust`) | `BH` |
-| `minLog2FC` | Minimum absolute log2 fold change for inclusion (two-sample/paired only) | 1e-16 |
+| `minLog2FC` | Minimum absolute log2 fold change for inclusion (two-sample/paired only) | 0 |
 | `moderateVariance` | Apply SAM-style variance moderation; adds median(SE) to denominator | TRUE |
 | `empiricalNull` | Use Efron's empirical null (median/MAD) for p-value calibration | TRUE |
 
