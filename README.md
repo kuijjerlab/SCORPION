@@ -364,7 +364,7 @@ results <- regressEdges(
 **Parameters:**
 
 | Parameter | Description | Default |
-|-----------|-------------|---------||
+|-----------|-------------|---------|
 | `networksDF` | Output from `runSCORPION()` | Required |
 | `orderedGroups` | Named list of column name vectors; list order defines progression | Required |
 | `padjustMethod` | Multiple testing correction method | `BH` |
