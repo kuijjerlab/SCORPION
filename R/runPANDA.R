@@ -81,12 +81,13 @@ runPANDA <- function(motif = NULL, expr = NULL, ppi = NULL, alpha = 0.1, hamming
         dims = c(num.TFs, num.TFs),
         dimnames = list(tf.names, tf.names)
       )
-      tfCoopNetwork <- as.matrix(tfCoopNetwork)
-      ppi <- tfCoopNetwork[lower.tri(tfCoopNetwork)] + tfCoopNetwork[upper.tri(tfCoopNetwork)]
-      ppi[tfCoopNetwork[lower.tri(tfCoopNetwork)] == tfCoopNetwork[upper.tri(tfCoopNetwork)]] <- ppi[tfCoopNetwork[lower.tri(tfCoopNetwork)] == tfCoopNetwork[upper.tri(tfCoopNetwork)]] / 2
-      tfCoopNetwork[upper.tri(tfCoopNetwork)] <- ppi
-      tfCoopNetwork[lower.tri(tfCoopNetwork)] <- ppi
-      tfCoopNetwork <- Matrix(tfCoopNetwork)
+      # Symmetrize the PPI matrix: average bidirectional edges,
+      # keep weight for unidirectional edges
+      both_present <- (tfCoopNetwork != 0) & (Matrix::t(tfCoopNetwork) != 0)
+      tfCoopNetwork <- (tfCoopNetwork + Matrix::t(tfCoopNetwork))
+      tfCoopNetwork[both_present] <- tfCoopNetwork[both_present] / 2
+      # Set diagonal to 1 (self-cooperation) to match Python behavior
+      Matrix::diag(tfCoopNetwork) <- 1
 
       # Motif matrix
       motif <- motif[motif[, 1] %in% tf.names, ]

@@ -5,7 +5,7 @@ normalizeNetwork <- function(X) {
 
   # overall values
   mu0 <- mean(X)
-  std0 <- sd(X) * sqrt((nr * nc - 1) / (nr * nc))
+  std0 <- sd(X)
 
   # operations on rows
   mu1 <- rowMeans(X) # operations on rows
