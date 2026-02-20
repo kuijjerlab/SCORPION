@@ -788,3 +788,245 @@ test_that("minLog2FC filter works correctly for two-sample tests", {
     expect_true(all(abs(results_filtered$log2FoldChange) >= 0.1))
   }
 })
+
+# =============================================================================
+# Tests for parallel processing (nCores / batchSize)
+# =============================================================================
+
+test_that("testEdges parallel single-sample matches serial and t.test()", {
+  skip_if_not_installed("furrr")
+  skip_if_not_installed("future")
+  mock <- create_mock_network()
+  
+  # Serial (nCores = 1)
+  results_serial <- testEdges(
+    networksDF = mock$df,
+    testType = "single",
+    group1 = mock$group1,
+    moderateVariance = FALSE,
+    empiricalNull = FALSE,
+    nCores = 1L
+  )
+  
+  # Parallel (nCores = 2, small batchSize to force multiple batches)
+  results_parallel <- testEdges(
+    networksDF = mock$df,
+    testType = "single",
+    group1 = mock$group1,
+    moderateVariance = FALSE,
+    empiricalNull = FALSE,
+    nCores = 2L,
+    batchSize = 15L
+  )
+  
+  # All columns should match
+  expect_equal(results_serial$tStatistic, results_parallel$tStatistic, tolerance = 1e-10)
+  expect_equal(results_serial$pValue, results_parallel$pValue, tolerance = 1e-10)
+  expect_equal(results_serial$meanEdge, results_parallel$meanEdge, tolerance = 1e-10)
+  expect_equal(results_serial$pAdj, results_parallel$pAdj, tolerance = 1e-10)
+  
+  # Parallel results should still match t.test()
+  for (i in 1:5) {
+    edge_vals <- as.numeric(mock$df[i, mock$group1])
+    ttest_result <- t.test(edge_vals, mu = 0, alternative = "two.sided")
+    result_row <- results_parallel[i, ]
+    expect_equal(result_row$tStatistic, as.numeric(ttest_result$statistic), 
+                 tolerance = 1e-10,
+                 label = paste("parallel t-stat for edge", i))
+    expect_equal(result_row$pValue, ttest_result$p.value, 
+                 tolerance = 1e-10,
+                 label = paste("parallel p-value for edge", i))
+  }
+})
+
+test_that("testEdges parallel two-sample matches serial and t.test()", {
+  skip_if_not_installed("furrr")
+  skip_if_not_installed("future")
+  mock <- create_mock_network()
+  
+  results_serial <- testEdges(
+    networksDF = mock$df,
+    testType = "two.sample",
+    group1 = mock$group1,
+    group2 = mock$group2,
+    moderateVariance = FALSE,
+    empiricalNull = FALSE,
+    nCores = 1L
+  )
+  
+  results_parallel <- testEdges(
+    networksDF = mock$df,
+    testType = "two.sample",
+    group1 = mock$group1,
+    group2 = mock$group2,
+    moderateVariance = FALSE,
+    empiricalNull = FALSE,
+    nCores = 2L,
+    batchSize = 20L
+  )
+  
+  expect_equal(results_serial$tStatistic, results_parallel$tStatistic, tolerance = 1e-10)
+  expect_equal(results_serial$pValue, results_parallel$pValue, tolerance = 1e-10)
+  expect_equal(results_serial$diffMean, results_parallel$diffMean, tolerance = 1e-10)
+  expect_equal(results_serial$pAdj, results_parallel$pAdj, tolerance = 1e-10)
+  
+  # Parallel results should still match t.test()
+  for (i in 1:5) {
+    edge_vals_g1 <- as.numeric(mock$df[i, mock$group1])
+    edge_vals_g2 <- as.numeric(mock$df[i, mock$group2])
+    ttest_result <- t.test(edge_vals_g1, edge_vals_g2, alternative = "two.sided")
+    result_row <- results_parallel[i, ]
+    expect_equal(result_row$tStatistic, as.numeric(ttest_result$statistic), 
+                 tolerance = 1e-10,
+                 label = paste("parallel t-stat for edge", i))
+    expect_equal(result_row$pValue, ttest_result$p.value, 
+                 tolerance = 1e-10,
+                 label = paste("parallel p-value for edge", i))
+  }
+})
+
+test_that("testEdges parallel paired matches serial and t.test()", {
+  skip_if_not_installed("furrr")
+  skip_if_not_installed("future")
+  mock <- create_mock_network_paired()
+  
+  results_serial <- testEdges(
+    networksDF = mock$df,
+    testType = "two.sample",
+    group1 = mock$group1,
+    group2 = mock$group2,
+    paired = TRUE,
+    moderateVariance = FALSE,
+    empiricalNull = FALSE,
+    nCores = 1L
+  )
+  
+  results_parallel <- testEdges(
+    networksDF = mock$df,
+    testType = "two.sample",
+    group1 = mock$group1,
+    group2 = mock$group2,
+    paired = TRUE,
+    moderateVariance = FALSE,
+    empiricalNull = FALSE,
+    nCores = 2L,
+    batchSize = 15L
+  )
+  
+  expect_equal(results_serial$tStatistic, results_parallel$tStatistic, tolerance = 1e-10)
+  expect_equal(results_serial$pValue, results_parallel$pValue, tolerance = 1e-10)
+  expect_equal(results_serial$diffMean, results_parallel$diffMean, tolerance = 1e-10)
+  expect_equal(results_serial$pAdj, results_parallel$pAdj, tolerance = 1e-10)
+  
+  # Parallel results should still match t.test(paired = TRUE)
+  for (i in 1:5) {
+    edge_vals_g1 <- as.numeric(mock$df[i, mock$group1])
+    edge_vals_g2 <- as.numeric(mock$df[i, mock$group2])
+    ttest_result <- t.test(edge_vals_g1, edge_vals_g2, paired = TRUE, 
+                           alternative = "two.sided")
+    result_row <- results_parallel[i, ]
+    expect_equal(result_row$tStatistic, as.numeric(ttest_result$statistic), 
+                 tolerance = 1e-10,
+                 label = paste("parallel paired t-stat for edge", i))
+    expect_equal(result_row$pValue, ttest_result$p.value, 
+                 tolerance = 1e-10,
+                 label = paste("parallel paired p-value for edge", i))
+  }
+})
+
+test_that("testEdges parallel moderateVariance matches serial", {
+  skip_if_not_installed("furrr")
+  skip_if_not_installed("future")
+  mock <- create_mock_network()
+  
+  # Serial with moderateVariance = TRUE
+  results_serial <- testEdges(
+    networksDF = mock$df,
+    testType = "two.sample",
+    group1 = mock$group1,
+    group2 = mock$group2,
+    moderateVariance = TRUE,
+    empiricalNull = FALSE,
+    nCores = 1L
+  )
+  
+  # Parallel with moderateVariance = TRUE (s0 pre-computed globally)
+  results_parallel <- testEdges(
+    networksDF = mock$df,
+    testType = "two.sample",
+    group1 = mock$group1,
+    group2 = mock$group2,
+    moderateVariance = TRUE,
+    empiricalNull = FALSE,
+    nCores = 2L,
+    batchSize = 15L
+  )
+  
+  expect_equal(results_serial$tStatistic, results_parallel$tStatistic, tolerance = 1e-10)
+  expect_equal(results_serial$pValue, results_parallel$pValue, tolerance = 1e-10)
+  expect_equal(results_serial$pAdj, results_parallel$pAdj, tolerance = 1e-10)
+})
+
+test_that("testEdges parallel batchSize variation gives same results", {
+  skip_if_not_installed("furrr")
+  skip_if_not_installed("future")
+  mock <- create_mock_network()
+  
+  results_batch10 <- testEdges(
+    networksDF = mock$df,
+    testType = "single",
+    group1 = mock$group1,
+    moderateVariance = FALSE,
+    empiricalNull = FALSE,
+    nCores = 2L,
+    batchSize = 10L
+  )
+  
+  results_batch25 <- testEdges(
+    networksDF = mock$df,
+    testType = "single",
+    group1 = mock$group1,
+    moderateVariance = FALSE,
+    empiricalNull = FALSE,
+    nCores = 2L,
+    batchSize = 25L
+  )
+  
+  expect_equal(results_batch10$tStatistic, results_batch25$tStatistic, tolerance = 1e-10)
+  expect_equal(results_batch10$pValue, results_batch25$pValue, tolerance = 1e-10)
+  expect_equal(results_batch10$pAdj, results_batch25$pAdj, tolerance = 1e-10)
+})
+
+test_that("testEdges nCores validation works", {
+  mock <- create_mock_network()
+  
+  expect_error(
+    testEdges(
+      networksDF = mock$df,
+      testType = "single",
+      group1 = mock$group1,
+      nCores = 0L
+    ),
+    "nCores"
+  )
+  
+  expect_error(
+    testEdges(
+      networksDF = mock$df,
+      testType = "single",
+      group1 = mock$group1,
+      nCores = -1L
+    ),
+    "nCores"
+  )
+  
+  expect_error(
+    testEdges(
+      networksDF = mock$df,
+      testType = "single",
+      group1 = mock$group1,
+      batchSize = 0L
+    ),
+    "batchSize"
+  )
+})

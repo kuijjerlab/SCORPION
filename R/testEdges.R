@@ -1,4 +1,5 @@
 #' @importFrom stats t.test p.adjust pf model.matrix
+#' @importFrom cli cli_alert_info cli_alert_success cli_abort
 #' @title Test edges from SCORPION networks
 #' @description Performs statistical testing of network edges from runSCORPION output.
 #' Supports single-sample tests (testing if edges differ from zero) and two-sample
@@ -38,6 +39,14 @@
 #'   then computes p-values from the standard normal. This is Efron's empirical null
 #'   correction (as in locfdr) and is essential when testing millions of correlated
 #'   edges. Runs in O(n) time. Default TRUE.
+#' @param nCores Integer specifying the number of parallel workers. Default 1
+#'   (sequential processing). When greater than 1, edges are split into batches and
+#'   processed in parallel using \code{furrr::future_map_dfr}. Requires the
+#'   \pkg{furrr} and \pkg{future} packages to be installed.
+#' @param batchSize Integer specifying the number of edges (rows) per batch for
+#'   parallel processing. Default NULL, which auto-calculates as
+#'   \code{ceiling(nrow(networksDF) / nCores)}. Only used when \code{nCores > 1}.
+#'   Smaller batch sizes use less memory per worker but add communication overhead.
 #' @return A data.frame containing:
 #'   \itemize{
 #'     \item{tf: Transcription factor}
@@ -141,36 +150,62 @@ testEdges <- function(networksDF,
                       padjustMethod = "BH",
                       minLog2FC = 0,
                       moderateVariance = TRUE,
-                      empiricalNull = TRUE) {
+                      empiricalNull = TRUE,
+                      nCores = 1L,
+                      batchSize = NULL) {
   
   # Input validation
   testType <- match.arg(testType)
   alternative <- match.arg(alternative)
   
   if (missing(group1) || is.null(group1)) {
-    stop("group1 must be specified")
+    cli::cli_abort("group1 must be specified")
   }
   
   if (!all(group1 %in% colnames(networksDF))) {
     missing_cols <- setdiff(group1, colnames(networksDF))
-    stop("Some group1 columns not found in networksDF: ", paste(missing_cols, collapse = ", "))
+    cli::cli_abort("Some group1 columns not found in networksDF: {paste(missing_cols, collapse = ', ')}")
   }
   
   if (testType == "two.sample") {
     if (is.null(group2)) {
-      stop("group2 must be specified for two.sample test")
+      cli::cli_abort("group2 must be specified for two.sample test")
     }
     if (!all(group2 %in% colnames(networksDF))) {
       missing_cols <- setdiff(group2, colnames(networksDF))
-      stop("Some group2 columns not found in networksDF: ", paste(missing_cols, collapse = ", "))
+      cli::cli_abort("Some group2 columns not found in networksDF: {paste(missing_cols, collapse = ', ')}")
     }
     if (paired && length(group1) != length(group2)) {
-      stop("For paired tests, group1 and group2 must have the same length")
+      cli::cli_abort("For paired tests, group1 and group2 must have the same length")
     }
   }
   
   if (paired && testType == "single") {
-    stop("Paired tests require testType = 'two.sample'")
+    cli::cli_abort("Paired tests require testType = 'two.sample'")
+  }
+  
+  # Validate nCores and batchSize
+  nCores <- as.integer(nCores)
+  if (length(nCores) != 1 || is.na(nCores) || nCores < 1L) {
+    cli::cli_abort("{.arg nCores} must be a positive integer, got {.val {nCores}}")
+  }
+  if (!is.null(batchSize)) {
+    batchSize <- as.integer(batchSize)
+    if (length(batchSize) != 1 || is.na(batchSize) || batchSize < 1L) {
+      cli::cli_abort("{.arg batchSize} must be a positive integer or NULL, got {.val {batchSize}}")
+    }
+  }
+  
+  # Check furrr availability when parallel requested
+  if (nCores > 1L) {
+    if (!requireNamespace("furrr", quietly = TRUE) ||
+        !requireNamespace("future", quietly = TRUE)) {
+      cli::cli_abort(c(
+        "Packages {.pkg furrr} and {.pkg future} are required for parallel processing.",
+        "i" = "Install them with {.code install.packages(c('furrr', 'future'))}",
+        "i" = "Or set {.code nCores = 1} to run sequentially."
+      ))
+    }
   }
   
   # Extract TF and target columns
@@ -178,35 +213,89 @@ testEdges <- function(networksDF,
   target_col <- which(colnames(networksDF) == "target")
   
   if (length(tf_col) == 0 || length(target_col) == 0) {
-    stop("networksDF must contain 'tf' and 'target' columns")
+    cli::cli_abort("networksDF must contain 'tf' and 'target' columns")
   }
   
-  # Perform tests based on testType
-  if (testType == "single") {
-    results <- testEdgesSingle(
+  n_edges <- nrow(networksDF)
+  
+  cli::cli_alert_info("Testing {n_edges} edges ({testType} test{if (paired) ', paired' else ''})")
+  
+  # Pre-compute global s0 for moderateVariance when using parallel processing
+  # This ensures identical results regardless of batch partitioning
+  s0 <- NULL
+  if (moderateVariance && nCores > 1L) {
+    s0 <- .computeGlobalS0(
       networksDF = networksDF,
+      testType = testType,
       group1 = group1,
-      alternative = alternative,
-      moderateVariance = moderateVariance
+      group2 = group2,
+      paired = paired
+    )
+  }
+  
+  # Resolve the correct helper function and build args for dispatch.
+  # Capturing the function object ensures it serializes correctly for
+  # parallel workers (which cannot find unexported package functions by name).
+  if (testType == "single") {
+    .helperFn <- testEdgesSingle
+    .helperArgs <- list(
+      group1 = group1, alternative = alternative,
+      moderateVariance = moderateVariance, s0 = s0
     )
   } else if (paired) {
-    results <- testEdgesPaired(
-      networksDF = networksDF,
-      group1 = group1,
-      group2 = group2,
-      alternative = alternative,
-      minLog2FC = minLog2FC,
-      moderateVariance = moderateVariance
+    .helperFn <- testEdgesPaired
+    .helperArgs <- list(
+      group1 = group1, group2 = group2, alternative = alternative,
+      minLog2FC = minLog2FC, moderateVariance = moderateVariance, s0 = s0
     )
   } else {
-    results <- testEdgesTwoSample(
-      networksDF = networksDF,
-      group1 = group1,
-      group2 = group2,
-      alternative = alternative,
-      minLog2FC = minLog2FC,
-      moderateVariance = moderateVariance
+    .helperFn <- testEdgesTwoSample
+    .helperArgs <- list(
+      group1 = group1, group2 = group2, alternative = alternative,
+      minLog2FC = minLog2FC, moderateVariance = moderateVariance, s0 = s0
     )
+  }
+  
+  # Perform tests: sequential or parallel
+  if (nCores == 1L) {
+    results <- do.call(.helperFn, c(list(networksDF = networksDF), .helperArgs))
+  } else {
+    # Calculate batch size
+    if (is.null(batchSize)) {
+      batchSize <- ceiling(n_edges / nCores)
+    }
+    
+    cli::cli_alert_info("Using {nCores} workers, batch size {batchSize}")
+    
+    # Split rows into batches
+    batch_indices <- split(
+      seq_len(n_edges),
+      ceiling(seq_len(n_edges) / batchSize)
+    )
+    
+    # Pre-split data into chunks to avoid shipping full data frame to each worker
+    chunks <- lapply(batch_indices, function(idx) networksDF[idx, , drop = FALSE])
+    
+    # Set up parallel plan; use sequential reset as safety net on exit
+    # to guarantee worker processes are killed even if an error occurs
+    old_plan <- future::plan(future::multisession, workers = nCores)
+    on.exit({
+      future::plan(future::sequential)
+      future::plan(old_plan)
+    }, add = TRUE)
+    
+    # Process batches in parallel
+    results <- furrr::future_map_dfr(
+      chunks,
+      function(chunk) do.call(.helperFn, c(list(networksDF = chunk), .helperArgs)),
+      .options = furrr::furrr_options(seed = NULL)
+    )
+    
+    # Shut down workers immediately: sequential kills all background processes,
+    # then restore the caller's original plan
+    future::plan(future::sequential)
+    future::plan(old_plan)
+    on.exit()  # cancel the on.exit guard since cleanup is done
   }
   
   # Apply empirical null correction (Efron's method) - O(n) time
@@ -238,12 +327,51 @@ testEdges <- function(networksDF,
   
   rownames(results) <- NULL
   
+  cli::cli_alert_success("Tested {nrow(results)} edges")
+  
   return(results)
+}
+
+#' Pre-compute global s0 (SAM fudge factor) for moderateVariance across all edges.
+#' This ensures identical results regardless of batch partitioning in parallel mode.
+#' @keywords internal
+.computeGlobalS0 <- function(networksDF, testType, group1, group2, paired) {
+  if (testType == "single") {
+    edge_matrix <- as.matrix(networksDF[, group1, drop = FALSE])
+    meanEdge <- rowMeans(edge_matrix, na.rm = TRUE)
+    n_valid <- rowSums(!is.na(edge_matrix))
+    row_mean_sq <- rowMeans(edge_matrix^2, na.rm = TRUE)
+    sd_edge <- sqrt(n_valid / (n_valid - 1) * (row_mean_sq - meanEdge^2))
+    se <- sd_edge / sqrt(n_valid)
+  } else if (paired) {
+    edge_matrix1 <- as.matrix(networksDF[, group1, drop = FALSE])
+    edge_matrix2 <- as.matrix(networksDF[, group2, drop = FALSE])
+    diff_matrix <- edge_matrix1 - edge_matrix2
+    diffMean <- rowMeans(diff_matrix, na.rm = TRUE)
+    valid_pairs <- !is.na(edge_matrix1) & !is.na(edge_matrix2)
+    n_valid <- rowSums(valid_pairs)
+    diff_mean_sq <- rowMeans(diff_matrix^2, na.rm = TRUE)
+    sd_diff <- sqrt(n_valid / (n_valid - 1) * (diff_mean_sq - diffMean^2))
+    se <- sd_diff / sqrt(n_valid)
+  } else {
+    edge_matrix1 <- as.matrix(networksDF[, group1, drop = FALSE])
+    edge_matrix2 <- as.matrix(networksDF[, group2, drop = FALSE])
+    meanEdge1 <- rowMeans(edge_matrix1, na.rm = TRUE)
+    meanEdge2 <- rowMeans(edge_matrix2, na.rm = TRUE)
+    n1 <- rowSums(!is.na(edge_matrix1))
+    n2 <- rowSums(!is.na(edge_matrix2))
+    row_mean_sq1 <- rowMeans(edge_matrix1^2, na.rm = TRUE)
+    row_mean_sq2 <- rowMeans(edge_matrix2^2, na.rm = TRUE)
+    var1 <- n1 / (n1 - 1) * (row_mean_sq1 - meanEdge1^2)
+    var2 <- n2 / (n2 - 1) * (row_mean_sq2 - meanEdge2^2)
+    se <- sqrt(var1 / n1 + var2 / n2)
+  }
+  median(se, na.rm = TRUE)
 }
 
 #' @keywords internal
 testEdgesSingle <- function(networksDF, group1, alternative, 
-                            moderateVariance = TRUE) {
+                            moderateVariance = TRUE, s0 = NULL) {
   
   # Extract edge weights for group1
   edge_data <- networksDF[, group1, drop = FALSE]
@@ -271,7 +399,7 @@ testEdgesSingle <- function(networksDF, group1, alternative,
   
   # Apply SAM-style variance moderation if requested
   if (moderateVariance) {
-    s0 <- median(se, na.rm = TRUE)
+    if (is.null(s0)) s0 <- median(se, na.rm = TRUE)
     se <- se + s0
   }
   
@@ -310,7 +438,7 @@ testEdgesSingle <- function(networksDF, group1, alternative,
 
 #' @keywords internal
 testEdgesTwoSample <- function(networksDF, group1, group2, alternative, minLog2FC,
-                               moderateVariance = TRUE) {
+                               moderateVariance = TRUE, s0 = NULL) {
   
   # Extract edge weights for both groups
   edge_data1 <- networksDF[, group1, drop = FALSE]
@@ -356,7 +484,7 @@ testEdgesTwoSample <- function(networksDF, group1, group2, alternative, minLog2F
   
   # Apply SAM-style variance moderation if requested
   if (moderateVariance) {
-    s0 <- median(se, na.rm = TRUE)
+    if (is.null(s0)) s0 <- median(se, na.rm = TRUE)
     se <- se + s0
   }
   
@@ -411,7 +539,7 @@ testEdgesTwoSample <- function(networksDF, group1, group2, alternative, minLog2F
 
 #' @keywords internal
 testEdgesPaired <- function(networksDF, group1, group2, alternative, minLog2FC,
-                            moderateVariance = TRUE) {
+                            moderateVariance = TRUE, s0 = NULL) {
   
   # Extract edge weights for both groups
   edge_data1 <- networksDF[, group1, drop = FALSE]
@@ -462,7 +590,7 @@ testEdgesPaired <- function(networksDF, group1, group2, alternative, minLog2FC,
   
   # Apply SAM-style variance moderation if requested
   if (moderateVariance) {
-    s0 <- median(se, na.rm = TRUE)
+    if (is.null(s0)) s0 <- median(se, na.rm = TRUE)
     se <- se + s0
   }
   
@@ -607,22 +735,22 @@ regressEdges <- function(networksDF,
   
   # Input validation
   if (missing(orderedGroups) || is.null(orderedGroups)) {
-    stop("orderedGroups must be specified")
+    cli::cli_abort("orderedGroups must be specified")
   }
   
   if (!is.list(orderedGroups) || is.null(names(orderedGroups))) {
-    stop("orderedGroups must be a named list")
+    cli::cli_abort("orderedGroups must be a named list")
   }
   
   if (length(orderedGroups) < 2) {
-    stop("orderedGroups must contain at least 2 conditions")
+    cli::cli_abort("orderedGroups must contain at least 2 conditions")
   }
   
   # Validate all columns exist
   all_cols <- unlist(orderedGroups, use.names = FALSE)
   if (!all(all_cols %in% colnames(networksDF))) {
     missing_cols <- setdiff(all_cols, colnames(networksDF))
-    stop("Some columns not found in networksDF: ", paste(missing_cols, collapse = ", "))
+    cli::cli_abort("Some columns not found in networksDF: {paste(missing_cols, collapse = ', ')}")
   }
   
   # Extract TF and target columns
@@ -630,7 +758,7 @@ regressEdges <- function(networksDF,
   target_col <- which(colnames(networksDF) == "target")
   
   if (length(tf_col) == 0 || length(target_col) == 0) {
-    stop("networksDF must contain 'tf' and 'target' columns")
+    cli::cli_abort("networksDF must contain 'tf' and 'target' columns")
   }
   
   # Prepare data for regression

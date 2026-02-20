@@ -14,7 +14,9 @@ testEdges(
   padjustMethod = "BH",
   minLog2FC = 0,
   moderateVariance = TRUE,
-  empiricalNull = TRUE
+  empiricalNull = TRUE,
+  nCores = 1L,
+  batchSize = NULL
 )
 }
 \arguments{
@@ -62,6 +64,16 @@ empirically from the observed t-statistics. When TRUE, uses the median and MAD
 then computes p-values from the standard normal. This is Efron's empirical null
 correction (as in locfdr) and is essential when testing millions of correlated
 edges. Runs in O(n) time. Default TRUE.}
+
+\item{nCores}{Integer specifying the number of parallel workers. Default 1
+(sequential processing). When greater than 1, edges are split into batches and
+processed in parallel using \code{furrr::future_map_dfr}. Requires the
+\pkg{furrr} and \pkg{future} packages to be installed.}
+
+\item{batchSize}{Integer specifying the number of edges (rows) per batch for
+parallel processing. Default NULL, which auto-calculates as
+\code{ceiling(nrow(networksDF) / nCores)}. Only used when \code{nCores > 1}.
+Smaller batch sizes use less memory per worker but add communication overhead.}
 }
 \value{
 A data.frame containing:

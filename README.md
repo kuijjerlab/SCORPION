@@ -264,9 +264,11 @@ results <- testEdges(
   paired = FALSE,
   alternative = "two.sided",
   padjustMethod = "BH",
-  minLog2FC = 1e-16,
+  minLog2FC = 0,
   moderateVariance = TRUE,
-  empiricalNull = TRUE
+  empiricalNull = TRUE,
+  nCores = 1L,
+  batchSize = NULL
 )
 ```
 
@@ -284,6 +286,8 @@ results <- testEdges(
 | `minLog2FC` | Minimum absolute log2 fold change for inclusion (two-sample/paired only) | 0 |
 | `moderateVariance` | Apply SAM-style variance moderation; adds median(SE) to denominator | TRUE |
 | `empiricalNull` | Use Efron's empirical null (median/MAD) for p-value calibration | TRUE |
+| `nCores` | Number of parallel workers. When >1, edges are split into batches processed via `furrr::future_map_dfr`. Requires `furrr` and `future` | 1 |
+| `batchSize` | Rows per batch for parallel processing. `NULL` auto-calculates as `ceiling(nrow(networksDF) / nCores)`. Only used when `nCores > 1` | NULL |
 
 **Return value:**
 
