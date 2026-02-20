@@ -262,8 +262,9 @@ testEdgesSingle <- function(networksDF, group1, alternative,
   # Count non-NA values per row
   n_valid <- rowSums(!is.na(edge_matrix))
   
-  # Calculate standard deviation per row (using only non-NA values)
-  sd_edge <- apply(edge_matrix, 1, sd, na.rm = TRUE)
+  # Calculate standard deviation per row (vectorized, no apply)
+  row_mean_sq <- rowMeans(edge_matrix^2, na.rm = TRUE)
+  sd_edge <- sqrt(n_valid / (n_valid - 1) * (row_mean_sq - meanEdge^2))
   
   # Calculate standard error
   se <- sd_edge / sqrt(n_valid)
@@ -344,9 +345,11 @@ testEdgesTwoSample <- function(networksDF, group1, group2, alternative, minLog2F
   n1 <- rowSums(!is.na(edge_matrix1))
   n2 <- rowSums(!is.na(edge_matrix2))
   
-  # Calculate variance per row (using only non-NA values)
-  var1 <- apply(edge_matrix1, 1, var, na.rm = TRUE)
-  var2 <- apply(edge_matrix2, 1, var, na.rm = TRUE)
+  # Calculate variance per row (vectorized, no apply)
+  row_mean_sq1 <- rowMeans(edge_matrix1^2, na.rm = TRUE)
+  row_mean_sq2 <- rowMeans(edge_matrix2^2, na.rm = TRUE)
+  var1 <- n1 / (n1 - 1) * (row_mean_sq1 - meanEdge1^2)
+  var2 <- n2 / (n2 - 1) * (row_mean_sq2 - meanEdge2^2)
   
   # Calculate Welch's t-statistic: t = (mean1 - mean2) / sqrt(var1/n1 + var2/n2)
   se <- sqrt(var1/n1 + var2/n2)
@@ -450,8 +453,9 @@ testEdgesPaired <- function(networksDF, group1, group2, alternative, minLog2FC,
   valid_pairs <- !is.na(edge_matrix1) & !is.na(edge_matrix2)
   n_valid <- rowSums(valid_pairs)
   
-  # Calculate standard deviation of differences
-  sd_diff <- apply(diff_matrix, 1, sd, na.rm = TRUE)
+  # Calculate standard deviation of differences (vectorized, no apply)
+  diff_mean_sq <- rowMeans(diff_matrix^2, na.rm = TRUE)
+  sd_diff <- sqrt(n_valid / (n_valid - 1) * (diff_mean_sq - diffMean^2))
   
   # Calculate standard error
   se <- sd_diff / sqrt(n_valid)
@@ -663,74 +667,56 @@ regressEdges <- function(networksDF,
   condition_means <- condition_means[keep_idx, , drop = FALSE]
   tf_target <- networksDF[keep_idx, c("tf", "target")]
   
-  # Vectorized linear regression
+  # Vectorized linear regression (no loop)
   n_edges <- nrow(edge_matrix)
   n_samples <- ncol(edge_matrix)
   
-  # Pre-compute regression components
-  x_mean <- mean(x)
-  x_centered <- x - x_mean
-  sxx <- sum(x_centered^2)
+  # Build NA mask and zero-filled matrix for safe rowSums / matrix multiply
+  mask <- !is.na(edge_matrix)
+  edge_clean <- edge_matrix
+  edge_clean[!mask] <- 0
   
-  # Initialize result vectors
-  slopes <- numeric(n_edges)
-  intercepts <- numeric(n_edges)
-  r_squared <- numeric(n_edges)
-  f_stats <- numeric(n_edges)
-  pvalues <- numeric(n_edges)
+  # Per-row valid counts
+
+  n_valid <- rowSums(mask)
   
-  # Compute regression for each edge
-  for (i in 1:n_edges) {
-    y <- edge_matrix[i, ]
-    
-    # Remove NA values
-    valid_idx <- !is.na(y)
-    y_valid <- y[valid_idx]
-    x_valid <- x[valid_idx]
-    n_valid <- length(y_valid)
-    
-    if (n_valid < 3) {
-      slopes[i] <- NA
-      intercepts[i] <- NA
-      r_squared[i] <- NA
-      f_stats[i] <- NA
-      pvalues[i] <- NA
-      next
-    }
-    
-    # Compute regression coefficients
-    x_valid_mean <- mean(x_valid)
-    y_valid_mean <- mean(y_valid)
-    x_valid_centered <- x_valid - x_valid_mean
-    y_valid_centered <- y_valid - y_valid_mean
-    
-    sxy <- sum(x_valid_centered * y_valid_centered)
-    sxx_valid <- sum(x_valid_centered^2)
-    syy <- sum(y_valid_centered^2)
-    
-    # Slope and intercept
-    slopes[i] <- sxy / sxx_valid
-    intercepts[i] <- y_valid_mean - slopes[i] * x_valid_mean
-    
-    # R-squared
-    ss_res <- sum((y_valid - (intercepts[i] + slopes[i] * x_valid))^2)
-    ss_tot <- syy
-    r_squared[i] <- 1 - (ss_res / ss_tot)
-    
-    # F-statistic and p-value
-    df_reg <- 1
-    df_res <- n_valid - 2
-    ms_reg <- (ss_tot - ss_res) / df_reg
-    ms_res <- ss_res / df_res
-    
-    if (ms_res > 0) {
-      f_stats[i] <- ms_reg / ms_res
-      pvalues[i] <- pf(f_stats[i], df1 = df_reg, df2 = df_res, lower.tail = FALSE)
-    } else {
-      f_stats[i] <- NA
-      pvalues[i] <- NA
-    }
-  }
+  # Per-row sums via matrix-vector products (mask converts NA positions to 0)
+  sum_x  <- drop(mask %*% x)
+  sum_x2 <- drop(mask %*% (x^2))
+  sum_y  <- rowSums(edge_clean)
+  sum_y2 <- rowSums(edge_clean^2)
+  sum_xy <- drop(edge_clean %*% x)
+  
+  # Per-row means of x and y (over valid entries only)
+  x_mean_r <- sum_x / n_valid
+  y_mean_r <- sum_y / n_valid
+  
+  # Centered sums of squares and cross-products
+  sxx <- sum_x2 - n_valid * x_mean_r^2
+  sxy <- sum_xy - n_valid * x_mean_r * y_mean_r
+  ss_tot <- sum_y2 - n_valid * y_mean_r^2  # = SYY
+  
+  # Regression coefficients
+  slopes <- sxy / sxx
+  intercepts <- y_mean_r - slopes * x_mean_r
+  
+  # SS_res via algebraic identity: SS_res = SS_tot - beta1^2 * Sxx
+  ss_res <- ss_tot - slopes^2 * sxx
+  
+  # R-squared, F-statistic, p-value
+  r_squared <- 1 - ss_res / ss_tot
+  df_res <- n_valid - 2
+  ms_res <- ss_res / df_res
+  f_stats <- (ss_tot - ss_res) / ms_res
+  pvalues <- pf(f_stats, df1 = 1, df2 = df_res, lower.tail = FALSE)
+  
+  # Mark edges with insufficient data or degenerate fits
+  insufficient <- n_valid < 3 | sxx == 0 | ms_res <= 0
+  slopes[insufficient] <- NA
+  intercepts[insufficient] <- NA
+  r_squared[insufficient] <- NA
+  f_stats[insufficient] <- NA
+  pvalues[insufficient] <- NA
   
   # Adjust p-values
   pAdj <- p.adjust(pvalues, method = padjustMethod)
