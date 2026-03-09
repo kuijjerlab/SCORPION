@@ -189,6 +189,8 @@
 #' @export
 #' @importFrom dplyr %>% mutate group_by filter .data
 #' @importFrom cli cli_h1 cli_alert_success cli_alert_info cli_abort cli_progress_along
+#' @importFrom furrr future_map furrr_options
+#' @importFrom future plan multisession sequential
 runSCORPION <- function(gexMatrix,
                         tfMotifs,
                         ppiNet,
@@ -292,7 +294,7 @@ runSCORPION <- function(gexMatrix,
       tfMotifs = as.data.frame(tfMotifs),
       ppiNet = as.data.frame(ppiNet),
       computingEngine = computingEngine,
-      nCores = nCores,
+      nCores = 1,
       gammaValue = gammaValue,
       nPC = nPC,
       assocMethod = assocMethod,
@@ -312,12 +314,27 @@ runSCORPION <- function(gexMatrix,
 
   network_ids <- unique(metadata$network_id)
 
+  old_maxSize <- getOption("future.globals.maxSize")
+  options(future.globals.maxSize = 1024 * 1024^2)
+  on.exit(options(future.globals.maxSize = old_maxSize), add = TRUE)
+
+  if (nCores > 1) {
+    old_plan <- future::plan(future::multisession, workers = nCores)
+    on.exit(future::plan(old_plan), add = TRUE)
+  } else {
+    old_plan <- future::plan(future::sequential)
+    on.exit(future::plan(old_plan), add = TRUE)
+  }
+
   if (showProgress) {
     cli::cli_alert_info("Computing networks")
-    network_matrices <- lapply(cli_progress_along(network_ids), compute_network)
+    if (nCores > 1) {
+      cli::cli_alert_info(paste0("Using ", nCores, " cores for parallel processing"))
+    }
+    network_matrices <- furrr::future_map(seq_along(network_ids), compute_network, .options = furrr::furrr_options(seed = TRUE), .progress = TRUE)
     cli::cli_alert_success("Networks successfully constructed")
   } else {
-    network_matrices <- lapply(seq_along(network_ids), compute_network)
+    network_matrices <- furrr::future_map(seq_along(network_ids), compute_network, .options = furrr::furrr_options(seed = TRUE), .progress = TRUE)
   }
 
   # Build TF-target pairs from first network using same method as before
