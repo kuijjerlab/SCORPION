@@ -22,5 +22,5 @@ fastCorrelation <- function(X, Y, method = 'pearson'){
   ny <- sqrt(colSums(RY * RY))
   
   # Correlation
-  t(RX) %*% RY / (nx %o% ny)
+  crossprod(RX, RY) / (nx %o% ny)
 }

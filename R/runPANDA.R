@@ -74,31 +74,27 @@ runPANDA <- function(motif = NULL, expr = NULL, ppi = NULL, alpha = 0.1, hamming
       # PPI matrix
       ppi <- ppi[ppi[, 1] %in% tf.names, ]
       ppi <- ppi[ppi[, 2] %in% tf.names, ]
-      tfCoopNetwork <- Matrix::sparseMatrix(
-        i = as.numeric(factor(ppi[, 1], tf.names)),
-        j = as.numeric(factor(ppi[, 2], tf.names)),
-        x = ppi[, 3],
-        dims = c(num.TFs, num.TFs),
-        dimnames = list(tf.names, tf.names)
-      )
+      tfCoopNetwork <- matrix(0, num.TFs, num.TFs, dimnames = list(tf.names, tf.names))
+      Idx1 <- match(ppi[, 1], tf.names)
+      Idx2 <- match(ppi[, 2], tf.names)
+      Idx <- (Idx2 - 1) * num.TFs + Idx1
+      tfCoopNetwork[Idx] <- ppi[, 3]
       # Symmetrize the PPI matrix: average bidirectional edges,
       # keep weight for unidirectional edges
-      both_present <- (tfCoopNetwork != 0) & (Matrix::t(tfCoopNetwork) != 0)
-      tfCoopNetwork <- (tfCoopNetwork + Matrix::t(tfCoopNetwork))
+      both_present <- (tfCoopNetwork != 0) & (t(tfCoopNetwork) != 0)
+      tfCoopNetwork <- tfCoopNetwork + t(tfCoopNetwork)
       tfCoopNetwork[both_present] <- tfCoopNetwork[both_present] / 2
       # Set diagonal to 1 (self-cooperation) to match Python behavior
-      Matrix::diag(tfCoopNetwork) <- 1
+      diag(tfCoopNetwork) <- 1
 
       # Motif matrix
       motif <- motif[motif[, 1] %in% tf.names, ]
       motif <- motif[motif[, 2] %in% gene.names, ]
-      regulatoryNetwork <- Matrix::sparseMatrix(
-        i = as.numeric(factor(motif[, 1], tf.names)),
-        j = as.numeric(factor(motif[, 2], gene.names)),
-        x = motif[, 3],
-        dims = c(num.TFs, num.genes),
-        dimnames = list(tf.names, gene.names)
-      )
+      regulatoryNetwork <- matrix(0, num.TFs, num.genes, dimnames = list(tf.names, gene.names))
+      Idx1 <- match(motif[, 1], tf.names)
+      Idx2 <- match(motif[, 2], gene.names)
+      Idx <- (Idx2 - 1) * num.TFs + Idx1
+      regulatoryNetwork[Idx] <- motif[, 3]
     }
 
     num.conditions <- ncol(expr)
@@ -142,23 +138,23 @@ runPANDA <- function(motif = NULL, expr = NULL, ppi = NULL, alpha = 0.1, hamming
       if (assoc.method == "pcNet") {
         geneCoreg <- pcNet(as.matrix(expr)) * (num.positive / num.conditions)
       } else {
-        geneCoreg <- suppressWarnings(Matrix(fastCorrelation(t(expr), t(expr), method = assoc.method))) * (num.positive / num.conditions)
+        geneCoreg <- fastCorrelation(t(expr), t(expr), method = assoc.method) * (num.positive / num.conditions)
       }
     } else {
       if (assoc.method == "pcNet") {
         geneCoreg <- pcNet(as.matrix(expr))
       } else {
-        geneCoreg <- suppressWarnings(Matrix(fastCorrelation(t(expr), t(expr), method = assoc.method)))
+        geneCoreg <- fastCorrelation(t(expr), t(expr), method = assoc.method)
       }
     }
     if (progress) {
       cli::cli_alert_success("Verified sufficient samples")
     }
   }
-  if (any(is.na(geneCoreg@x))) {
+  if (any(is.na(geneCoreg))) {
     # check for NA and replace them by zero
     diag(geneCoreg) <- 1
-    geneCoreg@x[is.na(geneCoreg@x)] <- 0
+    geneCoreg[is.na(geneCoreg)] <- 0
   }
 
   if (any(duplicated(motif))) {
@@ -187,19 +183,20 @@ runPANDA <- function(motif = NULL, expr = NULL, ppi = NULL, alpha = 0.1, hamming
       cli::cli_alert_info("Install it with: devtools::install_github('dosorio/gpuR')")
       cli::cli_alert_info("Falling back to CPU computing.")
       computing.engine <- "cpu"
-    } else {
-      is_unix <- .Platform$OS.type == "unix"
-      if (is_unix) {
-        gpuMatrix <- getFromNamespace("gpuMatrix", "gpuR")
-        tfCoopNetwork <- gpuMatrix(as.matrix(tfCoopNetwork))
-        regulatoryNetwork <- gpuMatrix(as.matrix(regulatoryNetwork))
-        geneCoreg <- gpuMatrix(as.matrix(geneCoreg))
-      } else {
-        cli::cli_alert_warning("GPU computing only supported on Unix systems. Falling back to CPU.")
-        computing.engine <- "cpu"
-      }
+    } else if (.Platform$OS.type != "unix") {
+      cli::cli_alert_warning("GPU computing only supported on Unix systems. Falling back to CPU.")
+      computing.engine <- "cpu"
     }
   }
+
+  # Select tanimoto function once — zero branching inside the loop
+  if (computing.engine == "gpu") {
+    gpuMatrixFn <- getFromNamespace("gpuMatrix", "gpuR")
+    tanimoto_fn <- function(...) tanimoto_gpu(..., gpuMatrixFn = gpuMatrixFn)
+  } else {
+    tanimoto_fn <- tanimoto
+  }
+
   minusAlpha <- 1 - alpha
   step <- 0
   hamming_cur <- 1
@@ -212,18 +209,25 @@ runPANDA <- function(motif = NULL, expr = NULL, ppi = NULL, alpha = 0.1, hamming
       cli::cli_alert_warning(paste0("Reached maximum iterations, iter =", iter))
       break
     }
-    Responsibility <- tanimoto(tfCoopNetwork, regulatoryNetwork)
-    Availability <- tanimoto(regulatoryNetwork, geneCoreg)
+    # Precompute squared norms for regulatoryNetwork (reused across tanimoto calls)
+    reg_row_sq <- rowSums(regulatoryNetwork * regulatoryNetwork)
+    reg_col_sq <- colSums(regulatoryNetwork * regulatoryNetwork)
+
+    Responsibility <- tanimoto_fn(tfCoopNetwork, regulatoryNetwork,
+                               y_norm_sq = reg_col_sq)
+    Availability <- tanimoto_fn(regulatoryNetwork, geneCoreg,
+                             x_norm_sq = reg_row_sq)
     RA <- 0.5 * (Responsibility + Availability)
 
     hamming_cur <- sum(abs(regulatoryNetwork - RA)) / (num.TFs * num.genes)
     regulatoryNetwork <- minusAlpha * regulatoryNetwork + alpha * RA
 
-    ppi <- tanimoto(regulatoryNetwork, t(regulatoryNetwork))
+    # tcrossprod/crossprod use optimized BLAS and avoid explicit t()
+    ppi <- tanimoto_fn(regulatoryNetwork, type = "tcrossprod")
     ppi <- update.diagonal(ppi, num.TFs, alpha, step)
     tfCoopNetwork <- minusAlpha * tfCoopNetwork + alpha * ppi
 
-    CoReg2 <- tanimoto(t(regulatoryNetwork), regulatoryNetwork)
+    CoReg2 <- tanimoto_fn(regulatoryNetwork, type = "crossprod")
     CoReg2 <- update.diagonal(CoReg2, num.genes, alpha, step)
     geneCoreg <- minusAlpha * geneCoreg + alpha * CoReg2
 
@@ -241,11 +245,8 @@ runPANDA <- function(motif = NULL, expr = NULL, ppi = NULL, alpha = 0.1, hamming
     cli::cli_alert_info(paste0("Time elapsed: ", round(toc, 2), " seconds"))
     cli::cli_end()
   }
-  regulatoryNetwork <- as.matrix(regulatoryNetwork)
   dimnames(regulatoryNetwork) <- list(tf.names, gene.names)
-  geneCoreg <- as.matrix(geneCoreg)
   dimnames(geneCoreg) <- list(gene.names, gene.names)
-  tfCoopNetwork <- as.matrix(tfCoopNetwork)
   dimnames(tfCoopNetwork) <- list(tf.names, tf.names)
   result <- prepResult(zScale, output, regulatoryNetwork, geneCoreg, tfCoopNetwork, edgelist, motif)
   return(result)
