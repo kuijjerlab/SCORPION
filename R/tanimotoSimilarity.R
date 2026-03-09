@@ -1,22 +1,54 @@
-tanimoto <- function(X, Y) {
-  nc <- ncol(Y)
-  nr <- nrow(X)
-  dm <- c(nr, nc)
+tanimoto <- function(X, Y = NULL,
+                     x_norm_sq = NULL, y_norm_sq = NULL,
+                     type = c("general", "tcrossprod", "crossprod")) {
+  type <- match.arg(type)
 
-  Amat <- (X %*% Y)
-  Bmat <- apply(Y * Y, 2, sum)
+  if (type == "tcrossprod") {
+    Amat <- tcrossprod(X)
+    if (is.null(x_norm_sq)) x_norm_sq <- rowSums(X * X)
+    y_norm_sq <- x_norm_sq
 
-  Bmat <- rep(Bmat, each = nr)
-  dim(Bmat) <- dm
-  # Bmat=matrix(rep(Bmat, each=nr), dm)
+  } else if (type == "crossprod") {
+    Amat <- crossprod(X)
+    if (is.null(x_norm_sq)) x_norm_sq <- colSums(X * X)
+    y_norm_sq <- x_norm_sq
 
-  Cmat <- apply(X * X, 1, sum)
-  Cmat <- rep(Cmat, nc)
-  dim(Cmat) <- dm
-  # Cmat=matrix(rep(Cmat, nc), dm)
+  } else {
+    Amat <- X %*% Y
+    if (is.null(y_norm_sq)) y_norm_sq <- colSums(Y * Y)
+    if (is.null(x_norm_sq)) x_norm_sq <- rowSums(X * X)
+  }
 
-  den <- (Bmat + Cmat - abs(Amat))
-  Amat <- Amat / sqrt(den)
+  den <- outer(x_norm_sq, y_norm_sq, "+") - abs(Amat)
+  Amat / sqrt(den)
+}
 
-  return(Amat)
+#' @importFrom utils getFromNamespace
+tanimoto_gpu <- function(X, Y = NULL,
+                         x_norm_sq = NULL, y_norm_sq = NULL,
+                         type = c("general", "tcrossprod", "crossprod"),
+                         gpuMatrixFn = NULL) {
+  type <- match.arg(type)
+  if (is.null(gpuMatrixFn)) gpuMatrixFn <- getFromNamespace("gpuMatrix", "gpuR")
+
+  if (type == "tcrossprod") {
+    gX <- gpuMatrixFn(X)
+    Amat <- as.matrix(gX %*% gpuMatrixFn(t(X)))
+    if (is.null(x_norm_sq)) x_norm_sq <- rowSums(X * X)
+    y_norm_sq <- x_norm_sq
+
+  } else if (type == "crossprod") {
+    gX <- gpuMatrixFn(X)
+    Amat <- as.matrix(gpuMatrixFn(t(X)) %*% gX)
+    if (is.null(x_norm_sq)) x_norm_sq <- colSums(X * X)
+    y_norm_sq <- x_norm_sq
+
+  } else {
+    Amat <- as.matrix(gpuMatrixFn(X) %*% gpuMatrixFn(Y))
+    if (is.null(y_norm_sq)) y_norm_sq <- colSums(Y * Y)
+    if (is.null(x_norm_sq)) x_norm_sq <- rowSums(X * X)
+  }
+
+  den <- outer(x_norm_sq, y_norm_sq, "+") - abs(Amat)
+  Amat / sqrt(den)
 }
