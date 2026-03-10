@@ -259,6 +259,12 @@ runSCORPION <- function(gexMatrix,
     gexMatrix <- remove_batch(X = gexMatrix, batch = batch)
     gexMatrix <- gexMatrix + mean_expr
   }
+  rm(batch)
+
+  # Pre-convert to data.frame once so workers receive the converted objects
+  # instead of converting on every call
+  tfMotifs <- as.data.frame(tfMotifs)
+  ppiNet <- as.data.frame(ppiNet)
 
   # Setting min number of cells to construct network
   min_cells <- max(minCells, 30)
@@ -272,6 +278,7 @@ runSCORPION <- function(gexMatrix,
   } else {
     cli::cli_abort('groupBy must match cellsMetadata column name')
   }
+  rm(cellsMetadata)
 
   total_net <- length(unique(metadata$network_id))
   metadata <- metadata %>% filter(.data$n_cells >= min_cells)
@@ -282,17 +289,21 @@ runSCORPION <- function(gexMatrix,
     cli::cli_alert_success(paste0(filtered_net, " networks meet the minimum cell requirement (", min_cells, ")"))
   }
 
-  compute_network <- function(idx) {
-    selected_network <- network_ids[idx]
+  network_ids <- unique(metadata$network_id)
 
-    selected_cells <- metadata %>%
-      filter(.data$network_id %in% selected_network)
-    selected_cells <- gexMatrix[, selected_cells$cell_id]
+  # Pre-split gexMatrix into per-group chunks so each worker only receives
+  # the subset it needs, instead of the full matrix.
+  gex_chunks <- lapply(network_ids, function(nid) {
+    cells <- metadata$cell_id[metadata$network_id == nid]
+    gexMatrix[, cells, drop = FALSE]
+  })
+  rm(gexMatrix, metadata)
 
+  compute_network <- function(gex_chunk) {
     network <- scorpion(
-      gexMatrix = selected_cells,
-      tfMotifs = as.data.frame(tfMotifs),
-      ppiNet = as.data.frame(ppiNet),
+      gexMatrix = gex_chunk,
+      tfMotifs = tfMotifs,
+      ppiNet = ppiNet,
       computingEngine = computingEngine,
       nCores = 1,
       gammaValue = gammaValue,
@@ -308,7 +319,7 @@ runSCORPION <- function(gexMatrix,
       scaleByPresent = scaleByPresent,
       filterExpr = filterExpr
     )[[outNet]]
-    
+
     return(network)
   }
 
@@ -327,25 +338,31 @@ runSCORPION <- function(gexMatrix,
     if (nCores > 1) {
       cli::cli_alert_info(paste0("Using ", nCores, " cores for parallel processing"))
     }
-    network_matrices <- furrr::future_map(seq_along(network_ids), compute_network, .options = furrr::furrr_options(seed = TRUE), .progress = TRUE)
+    network_matrices <- furrr::future_map(gex_chunks, compute_network, .options = furrr::furrr_options(seed = TRUE), .progress = showProgress)
     cli::cli_alert_success("Networks successfully constructed")
   } else {
-    network_matrices <- furrr::future_map(seq_along(network_ids), compute_network, .options = furrr::furrr_options(seed = TRUE), .progress = TRUE)
+    network_matrices <- furrr::future_map(gex_chunks, compute_network, .options = furrr::furrr_options(seed = TRUE), .progress = showProgress)
   }
+  rm(gex_chunks)
 
-  # Build TF-target pairs from first network using same method as before
+  # Build TF-target pairs from first network
   first_net <- network_matrices[[1]]
   tf_target_df <- as.data.frame(as.table(first_net))[, 1:2]
   colnames(tf_target_df) <- c("tf", "target")
-  
-  # Extract weights as vectors (column-major order matches as.table order)
-  weight_matrix <- vapply(
-    network_matrices,
-    as.vector,
-    numeric(length(first_net))
-  )
+  n_edges <- length(first_net)
+  rm(first_net)
+
+  # Stream extraction: pull each network's weights into pre-allocated matrix,
+  # then NULL out the list element immediately to free memory.
+  n_nets <- length(network_matrices)
+  weight_matrix <- matrix(NA_real_, nrow = n_edges, ncol = n_nets)
   colnames(weight_matrix) <- network_ids
-  
+  for (k in seq_len(n_nets)) {
+    weight_matrix[, k] <- as.vector(network_matrices[[k]])
+    network_matrices[[k]] <- NULL
+  }
+  rm(network_matrices)
+
   # Combine into final data frame
   networks <- data.frame(
     tf = as.character(tf_target_df$tf),
