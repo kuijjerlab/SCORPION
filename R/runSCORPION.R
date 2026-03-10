@@ -314,10 +314,6 @@ runSCORPION <- function(gexMatrix,
 
   network_ids <- unique(metadata$network_id)
 
-  old_maxSize <- getOption("future.globals.maxSize")
-  options(future.globals.maxSize = 1024 * 1024^2)
-  on.exit(options(future.globals.maxSize = old_maxSize), add = TRUE)
-
   if (nCores > 1) {
     old_plan <- future::plan(future::multisession, workers = nCores)
     on.exit(future::plan(old_plan), add = TRUE)
