@@ -239,6 +239,13 @@ runSCORPION <- function(gexMatrix,
     cli::cli_h1("SCORPION")
   }
 
+  # Control BLAS threading to respect nCores
+  if (requireNamespace("RhpcBLASctl", quietly = TRUE)) {
+    old_blas <- RhpcBLASctl::blas_get_num_procs()
+    RhpcBLASctl::blas_set_num_threads(nCores)
+    on.exit(RhpcBLASctl::blas_set_num_threads(old_blas), add = TRUE)
+  }
+
   # Normalizing data
   if (normalizeData) {
     if (showProgress) {
