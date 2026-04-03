@@ -151,6 +151,7 @@ runPANDA <- function(motif = NULL, expr = NULL, ppi = NULL, alpha = 0.1, hamming
       cli::cli_alert_success("Verified sufficient samples")
     }
   }
+  rm(expr)
   if (any(is.na(geneCoreg))) {
     # check for NA and replace them by zero
     diag(geneCoreg) <- 1
@@ -197,7 +198,6 @@ runPANDA <- function(motif = NULL, expr = NULL, ppi = NULL, alpha = 0.1, hamming
     tanimoto_fn <- tanimoto
   }
 
-  minusAlpha <- 1 - alpha
   step <- 0
   hamming_cur <- 1
   if (progress) {
@@ -209,27 +209,33 @@ runPANDA <- function(motif = NULL, expr = NULL, ppi = NULL, alpha = 0.1, hamming
       cli::cli_alert_warning(paste0("Reached maximum iterations, iter =", iter))
       break
     }
-    # Precompute squared norms for regulatoryNetwork (reused across tanimoto calls)
-    reg_row_sq <- rowSums(regulatoryNetwork * regulatoryNetwork)
-    reg_col_sq <- colSums(regulatoryNetwork * regulatoryNetwork)
+    # Precompute squared norms once (shared across tanimoto calls)
+    reg_sq <- regulatoryNetwork * regulatoryNetwork
+    reg_row_sq <- rowSums(reg_sq)
+    reg_col_sq <- colSums(reg_sq)
+    rm(reg_sq)
 
-    Responsibility <- tanimoto_fn(tfCoopNetwork, regulatoryNetwork,
+    # Combine Responsibility + Availability directly into RA
+    RA <- tanimoto_fn(tfCoopNetwork, regulatoryNetwork,
                                y_norm_sq = reg_col_sq)
-    Availability <- tanimoto_fn(regulatoryNetwork, geneCoreg,
+    RA <- RA + tanimoto_fn(regulatoryNetwork, geneCoreg,
                              x_norm_sq = reg_row_sq)
-    RA <- 0.5 * (Responsibility + Availability)
+    RA <- 0.5 * RA
 
     hamming_cur <- sum(abs(regulatoryNetwork - RA)) / (num.TFs * num.genes)
-    regulatoryNetwork <- minusAlpha * regulatoryNetwork + alpha * RA
+    regulatoryNetwork <- regulatoryNetwork + alpha * (RA - regulatoryNetwork)
+    rm(RA)
 
     # tcrossprod/crossprod use optimized BLAS and avoid explicit t()
     ppi <- tanimoto_fn(regulatoryNetwork, type = "tcrossprod")
     ppi <- update.diagonal(ppi, num.TFs, alpha, step)
-    tfCoopNetwork <- minusAlpha * tfCoopNetwork + alpha * ppi
+    tfCoopNetwork <- tfCoopNetwork + alpha * (ppi - tfCoopNetwork)
+    rm(ppi)
 
     CoReg2 <- tanimoto_fn(regulatoryNetwork, type = "crossprod")
     CoReg2 <- update.diagonal(CoReg2, num.genes, alpha, step)
-    geneCoreg <- minusAlpha * geneCoreg + alpha * CoReg2
+    geneCoreg <- geneCoreg + alpha * (CoReg2 - geneCoreg)
+    rm(CoReg2)
 
     if (progress) {
       # message("Iteration ", step,": hamming distance = ", round(hamming_cur,5))

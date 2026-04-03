@@ -6,13 +6,11 @@ remove_batch <- function(X, batch) {
 
     # Solve coefficients: beta = (H'H)^(-1) H' X'
     HtH_inv <- solve(crossprod(H))
-    HtX <- crossprod(H, t(X))
-    beta <- HtH_inv %*% HtX
+    beta <- HtH_inv %*% t(X %*% H)
 
-    # Correction: H * beta, then subtract
-    X <- t(t(X) - H %*% beta)
+    # Correction: subtract H %*% beta from X
+    X <- X - tcrossprod(t(beta), H)
 
-    # Clear memory
     gc()
     return(X)
 }

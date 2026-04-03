@@ -19,8 +19,13 @@ tanimoto <- function(X, Y = NULL,
     if (is.null(x_norm_sq)) x_norm_sq <- rowSums(X * X)
   }
 
-  den <- outer(x_norm_sq, y_norm_sq, "+") - abs(Amat)
-  Amat / sqrt(den)
+  # Column-by-column normalization to avoid full-size outer() temporary
+  nc <- ncol(Amat)
+  for (j in seq_len(nc)) {
+    col_j <- Amat[, j]
+    Amat[, j] <- col_j / sqrt(x_norm_sq + y_norm_sq[j] - abs(col_j))
+  }
+  Amat
 }
 
 #' @importFrom utils getFromNamespace
@@ -49,6 +54,10 @@ tanimoto_gpu <- function(X, Y = NULL,
     if (is.null(x_norm_sq)) x_norm_sq <- rowSums(X * X)
   }
 
-  den <- outer(x_norm_sq, y_norm_sq, "+") - abs(Amat)
-  Amat / sqrt(den)
+  nc <- ncol(Amat)
+  for (j in seq_len(nc)) {
+    col_j <- Amat[, j]
+    Amat[, j] <- col_j / sqrt(x_norm_sq + y_norm_sq[j] - abs(col_j))
+  }
+  Amat
 }
