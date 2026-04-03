@@ -296,6 +296,10 @@ runSCORPION <- function(gexMatrix,
     cli::cli_alert_success(paste0(filtered_net, " networks meet the minimum cell requirement (", min_cells, ")"))
   }
 
+  if (filtered_net == 0) {
+    cli::cli_abort("No groups have enough cells (>= {min_cells}) to build a network")
+  }
+
   network_ids <- unique(metadata$network_id)
 
   # Pre-split gexMatrix into per-group chunks so each worker only receives
@@ -330,8 +334,6 @@ runSCORPION <- function(gexMatrix,
     return(network)
   }
 
-  network_ids <- unique(metadata$network_id)
-
   if (nCores > 1) {
     old_plan <- future::plan(future::multisession, workers = nCores)
     on.exit(future::plan(old_plan), add = TRUE)
@@ -340,15 +342,23 @@ runSCORPION <- function(gexMatrix,
     on.exit(future::plan(old_plan), add = TRUE)
   }
 
+  n_total <- length(gex_chunks)
+
   if (showProgress) {
-    cli::cli_alert_info("Computing networks")
+    cli::cli_alert_info(paste0("Computing ", n_total, " networks"))
     if (nCores > 1) {
       cli::cli_alert_info(paste0("Using ", nCores, " cores for parallel processing"))
+      network_matrices <- furrr::future_map(gex_chunks, compute_network, .options = furrr::furrr_options(seed = TRUE), .progress = FALSE)
+    } else {
+      network_matrices <- vector("list", n_total)
+      for (i in seq_len(n_total)) {
+        cli::cli_alert_info(paste0("Network ", i, "/", n_total, ": ", network_ids[i]))
+        network_matrices[[i]] <- compute_network(gex_chunks[[i]])
+      }
     }
-    network_matrices <- furrr::future_map(gex_chunks, compute_network, .options = furrr::furrr_options(seed = TRUE), .progress = showProgress)
     cli::cli_alert_success("Networks successfully constructed")
   } else {
-    network_matrices <- furrr::future_map(gex_chunks, compute_network, .options = furrr::furrr_options(seed = TRUE), .progress = showProgress)
+    network_matrices <- furrr::future_map(gex_chunks, compute_network, .options = furrr::furrr_options(seed = TRUE), .progress = FALSE)
   }
   rm(gex_chunks)
 
@@ -366,7 +376,7 @@ runSCORPION <- function(gexMatrix,
   colnames(weight_matrix) <- network_ids
   for (k in seq_len(n_nets)) {
     weight_matrix[, k] <- as.vector(network_matrices[[k]])
-    network_matrices[[k]] <- NULL
+    network_matrices[k] <- list(NULL)
   }
   rm(network_matrices)
 
