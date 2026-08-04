@@ -334,7 +334,29 @@ runSCORPION <- function(gexMatrix,
     return(network)
   }
 
+  # The TF-motif prior and PPI network are broadcast to every parallel worker.
+  # If the optional 'mori' package is available, place them in OS-backed shared
+  # memory so workers map the same physical pages instead of each receiving a
+  # full serialized copy. Falls back to standard serialization when absent, or
+  # when disabled via options(scorpion.use_mori = FALSE).
+  use_mori <- nCores > 1 &&
+    isTRUE(getOption("scorpion.use_mori", TRUE)) &&
+    requireNamespace("mori", quietly = TRUE)
+  if (use_mori) {
+    if (!is.null(tfMotifs)) tfMotifs <- mori::share(tfMotifs)
+    if (!is.null(ppiNet)) ppiNet <- mori::share(ppiNet)
+  }
+
+  furrr_opts <- furrr::furrr_options(
+    seed = TRUE,
+    packages = if (use_mori) "mori" else NULL
+  )
+
   if (nCores > 1) {
+    # Allow arbitrarily large globals to be exported to workers.
+    old_maxsize <- getOption("future.globals.maxSize")
+    options(future.globals.maxSize = Inf)
+    on.exit(options(future.globals.maxSize = old_maxsize), add = TRUE)
     old_plan <- future::plan(future::multisession, workers = nCores)
     on.exit(future::plan(old_plan), add = TRUE)
   } else {
@@ -348,7 +370,7 @@ runSCORPION <- function(gexMatrix,
     cli::cli_alert_info(paste0("Computing ", n_total, " networks"))
     if (nCores > 1) {
       cli::cli_alert_info(paste0("Using ", nCores, " cores for parallel processing"))
-      network_matrices <- furrr::future_map(gex_chunks, compute_network, .options = furrr::furrr_options(seed = TRUE), .progress = FALSE)
+      network_matrices <- furrr::future_map(gex_chunks, compute_network, .options = furrr_opts, .progress = FALSE)
     } else {
       network_matrices <- vector("list", n_total)
       for (i in seq_len(n_total)) {
@@ -358,7 +380,7 @@ runSCORPION <- function(gexMatrix,
     }
     cli::cli_alert_success("Networks successfully constructed")
   } else {
-    network_matrices <- furrr::future_map(gex_chunks, compute_network, .options = furrr::furrr_options(seed = TRUE), .progress = FALSE)
+    network_matrices <- furrr::future_map(gex_chunks, compute_network, .options = furrr_opts, .progress = FALSE)
   }
   rm(gex_chunks)
 

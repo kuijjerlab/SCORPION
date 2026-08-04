@@ -84,7 +84,7 @@ A data.frame containing:
     \item{tStatistic: Test statistic}
     \item{pValue: Raw p-value}
     \item{pAdj: Adjusted p-value}
-    \item{For two-sample tests: meanGroup1, meanGroup2, diffMean (Group1 - Group2), cohensD, log2FoldChange}
+    \item{For two-sample tests: meanGroup1, meanGroup2, cohensD, log2FoldChange (Group1 - Group2)}
   }
 }
 \description{
