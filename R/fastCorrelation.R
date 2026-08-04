@@ -21,6 +21,10 @@ fastCorrelation <- function(X, Y, method = 'pearson'){
   nx <- sqrt(colSums(RX * RX))
   ny <- sqrt(colSums(RY * RY))
   
-  # Correlation
-  crossprod(RX, RY) / (nx %o% ny)
+  # Correlation — column-by-column division avoids full-size outer product
+  result <- crossprod(RX, RY)
+  for (j in seq_len(ncol(result))) {
+    result[, j] <- result[, j] / (nx * ny[j])
+  }
+  result
 }

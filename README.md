@@ -298,9 +298,8 @@ A data frame containing:
 | `tf`, `target` | TF-target pair identifiers |
 | `meanEdge` | Mean edge weight (single-sample) |
 | `meanGroup1`, `meanGroup2` | Group means (two-sample) |
-| `diffMean` | Difference in means, Group1 − Group2 (two-sample) |
 | `cohensD` | Cohen's d effect size (two-sample and paired tests) |
-| `log2FoldChange` | Log2 fold change (two-sample) |
+| `log2FoldChange` | Log2 fold change, Group1 − Group2 (two-sample) |
 | `tStatistic` | t-statistic |
 | `pValue` | Raw p-value |
 | `pAdj` | Adjusted p-value |

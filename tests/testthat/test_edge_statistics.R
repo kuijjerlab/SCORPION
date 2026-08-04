@@ -282,7 +282,7 @@ test_that("testEdges two-sample mean difference is correct", {
     result_row <- results[results$tf == mock$df$tf[i] & 
                            results$target == mock$df$target[i], ]
     
-    expect_equal(result_row$diffMean, expected_diff, 
+    expect_equal(result_row$log2FoldChange, expected_diff, 
                  tolerance = 1e-10,
                  label = paste("mean difference for edge", i))
     expect_equal(result_row$meanGroup1, mean(edge_vals_g1), 
@@ -449,18 +449,18 @@ test_that("testEdges paired mean difference is correct", {
     empiricalNull = FALSE
   )
   
-  # Check that diffMean equals mean of differences (not difference of means)
+  # Check that log2FoldChange equals mean of differences (not difference of means)
   for (i in 1:10) {
     edge_vals_g1 <- as.numeric(mock$df[i, mock$group1])
     edge_vals_g2 <- as.numeric(mock$df[i, mock$group2])
     
-    # For paired test, diffMean should be mean(g1 - g2)
+    # For paired test, log2FoldChange should be mean(g1 - g2)
     expected_diff <- mean(edge_vals_g1 - edge_vals_g2)
     
     result_row <- results[results$tf == mock$df$tf[i] & 
                            results$target == mock$df$target[i], ]
     
-    expect_equal(result_row$diffMean, expected_diff, 
+    expect_equal(result_row$log2FoldChange, expected_diff, 
                  tolerance = 1e-10,
                  label = paste("paired mean difference for edge", i))
   }
@@ -867,7 +867,7 @@ test_that("testEdges parallel two-sample matches serial and t.test()", {
   
   expect_equal(results_serial$tStatistic, results_parallel$tStatistic, tolerance = 1e-10)
   expect_equal(results_serial$pValue, results_parallel$pValue, tolerance = 1e-10)
-  expect_equal(results_serial$diffMean, results_parallel$diffMean, tolerance = 1e-10)
+  expect_equal(results_serial$log2FoldChange, results_parallel$log2FoldChange, tolerance = 1e-10)
   expect_equal(results_serial$pAdj, results_parallel$pAdj, tolerance = 1e-10)
   
   # Parallel results should still match t.test()
@@ -915,7 +915,7 @@ test_that("testEdges parallel paired matches serial and t.test()", {
   
   expect_equal(results_serial$tStatistic, results_parallel$tStatistic, tolerance = 1e-10)
   expect_equal(results_serial$pValue, results_parallel$pValue, tolerance = 1e-10)
-  expect_equal(results_serial$diffMean, results_parallel$diffMean, tolerance = 1e-10)
+  expect_equal(results_serial$log2FoldChange, results_parallel$log2FoldChange, tolerance = 1e-10)
   expect_equal(results_serial$pAdj, results_parallel$pAdj, tolerance = 1e-10)
   
   # Parallel results should still match t.test(paired = TRUE)

@@ -137,6 +137,7 @@ makeSuperCells <- function(X,
       PCA.presampled$u %*% diag(PCA.presampled$d)
     PCA.presampled$rotation <- PCA.presampled$v
   }
+  rm(X.for.pca)
 
   sc.nw <-
     buildKNN(
@@ -147,6 +148,7 @@ makeSuperCells <- function(X,
       dist_method = "euclidean",
       directed = directed
     )
+  rm(PCA.presampled)
 
   # simplify
 
@@ -179,6 +181,7 @@ makeSuperCells <- function(X,
     igraph::contract(sc.nw$graph.knn, membership.presampled)
   SC.NW <-
     igraph::simplify(SC.NW, remove.loops = T, edge.attr.comb = "sum")
+  rm(g.s, sc.nw, SC.NW)
 
   if (do.approx) {
     # PCA.averaged.SC      <-

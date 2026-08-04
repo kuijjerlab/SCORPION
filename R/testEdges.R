@@ -55,7 +55,7 @@
 #'     \item{tStatistic: Test statistic}
 #'     \item{pValue: Raw p-value}
 #'     \item{pAdj: Adjusted p-value}
-#'     \item{For two-sample tests: meanGroup1, meanGroup2, diffMean (Group1 - Group2), cohensD, log2FoldChange}
+#'     \item{For two-sample tests: meanGroup1, meanGroup2, cohensD, log2FoldChange (Group1 - Group2)}
 #'   }
 #' @details
 #' For single-sample tests, the function tests whether the mean edge weight across
@@ -278,6 +278,9 @@ testEdges <- function(networksDF,
     
     # Set up parallel plan; use sequential reset as safety net on exit
     # to guarantee worker processes are killed even if an error occurs
+    old_maxsize <- getOption("future.globals.maxSize")
+    options(future.globals.maxSize = Inf)
+    on.exit(options(future.globals.maxSize = old_maxsize), add = TRUE)
     old_plan <- future::plan(future::multisession, workers = nCores)
     on.exit({
       future::plan(future::sequential)
@@ -295,6 +298,7 @@ testEdges <- function(networksDF,
     # then restore the caller's original plan
     future::plan(future::sequential)
     future::plan(old_plan)
+    options(future.globals.maxSize = old_maxsize)
     on.exit()  # cancel the on.exit guard since cleanup is done
   }
   
@@ -452,10 +456,10 @@ testEdgesTwoSample <- function(networksDF, group1, group2, alternative, minLog2F
   meanEdge <- (meanEdge1 + meanEdge2) / 2
   diffMean <- meanEdge1 - meanEdge2
   
-  # Calculate log2 fold change from quantiles (needed for filtering)
-  # Convert z-scores to quantiles using pnorm with log.p=TRUE for precision
-  # log2(q1/q2) = (log(q1) - log(q2)) / log(2)
-  log2FC <- (pnorm(meanEdge1, log.p = TRUE) - pnorm(meanEdge2, log.p = TRUE)) / log(2)
+  # limma-style log2 fold change: limma's logFC is the model coefficient, i.e. the
+  # difference of group means on log2-scale input (defined for all reals, incl.
+  # negative means). Treating edge weights as log2-scale, this equals diffMean.
+  log2FC <- meanEdge1 - meanEdge2
   
   # Filter by minimum log2 fold change
   keep_idx <- abs(log2FC) >= minLog2FC
@@ -525,7 +529,6 @@ testEdgesTwoSample <- function(networksDF, group1, group2, alternative, minLog2F
     target = tf_target$target,
     meanGroup1 = meanEdge1,
     meanGroup2 = meanEdge2,
-    diffMean = diffMean,
     cohensD = cohensD,
     log2FoldChange = log2FC,
     meanEdge = meanEdge,
@@ -556,10 +559,10 @@ testEdgesPaired <- function(networksDF, group1, group2, alternative, minLog2FC,
   diff_matrix <- edge_matrix1 - edge_matrix2
   diffMean <- rowMeans(diff_matrix, na.rm = TRUE)
   
-  # Calculate log2 fold change from quantiles (needed for filtering)
-  # Convert z-scores to quantiles using pnorm with log.p=TRUE for precision
-  # log2(q1/q2) = (log(q1) - log(q2)) / log(2)
-  log2FC <- (pnorm(meanEdge1, log.p = TRUE) - pnorm(meanEdge2, log.p = TRUE)) / log(2)
+  # limma-style log2 fold change: limma's logFC is the model coefficient, i.e. the
+  # difference of group means on log2-scale input (defined for all reals, incl.
+  # negative means). Treating edge weights as log2-scale, this equals diffMean.
+  log2FC <- meanEdge1 - meanEdge2
   
   # Filter by minimum log2 fold change
   keep_idx <- abs(log2FC) >= minLog2FC
@@ -626,7 +629,6 @@ testEdgesPaired <- function(networksDF, group1, group2, alternative, minLog2FC,
     target = tf_target$target,
     meanGroup1 = meanEdge1,
     meanGroup2 = meanEdge2,
-    diffMean = diffMean,
     cohensD = cohensD,
     log2FoldChange = log2FC,
     meanEdge = meanEdge,

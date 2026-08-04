@@ -6,30 +6,42 @@ normalizeNetwork <- function(X) {
   mu0 <- mean(X)
   std0 <- sd(X)
 
-  # Row normalization (R's column-major recycling handles row-wise broadcast)
+  # Row stats
   mu1 <- rowMeans(X)
   std1 <- rowSds(X) * sqrt((nc - 1) / nc)
-  Z1 <- (X - mu1) / std1
 
-  # Column normalization (needs explicit broadcast)
+  # Column stats (vectors only — no full-matrix broadcast)
   mu2 <- colMeans(X)
   std2 <- colSds(X) * sqrt((nr - 1) / nr)
-  mu2 <- rep(mu2, each = nr)
-  dim(mu2) <- c(nr, nc)
-  std2 <- rep(std2, each = nr)
-  dim(std2) <- c(nr, nc)
-  Z2 <- (X - mu2) / std2
 
-  # combine and return
-  normMat <- (Z1 + Z2) / sqrt(2)
+  has_zero_var <- any(std1 == 0) || any(std2 == 0)
 
-  Z0 <- (X - mu0) / std0
-  f1 <- is.na(Z1)
-  f2 <- is.na(Z2)
+  if (!has_zero_var) {
+    # Fast path: accumulate Z1 + Z2 in a single matrix
+    normMat <- (X - mu1) / std1
+    for (j in seq_len(nc)) {
+      normMat[, j] <- normMat[, j] + (X[, j] - mu2[j]) / std2[j]
+    }
+    normMat <- normMat / sqrt(2)
+  } else {
+    # Slow path: handle NaN from zero-variance rows/columns
+    Z1 <- (X - mu1) / std1
 
-  normMat[f1] <- (Z2[f1] + Z0[f1]) / sqrt(2)
-  normMat[f2] <- (Z1[f2] + Z0[f2]) / sqrt(2)
-  normMat[f1 & f2] <- 2 * Z0[f1 & f2] / sqrt(2)
+    Z2 <- X
+    for (j in seq_len(nc)) {
+      Z2[, j] <- (X[, j] - mu2[j]) / std2[j]
+    }
+
+    normMat <- (Z1 + Z2) / sqrt(2)
+
+    Z0 <- (X - mu0) / std0
+    f1 <- is.na(Z1)
+    f2 <- is.na(Z2)
+
+    normMat[f1] <- (Z2[f1] + Z0[f1]) / sqrt(2)
+    normMat[f2] <- (Z1[f2] + Z0[f2]) / sqrt(2)
+    normMat[f1 & f2] <- 2 * Z0[f1 & f2] / sqrt(2)
+  }
 
   normMat
 }
