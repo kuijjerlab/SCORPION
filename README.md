@@ -415,6 +415,250 @@ decreasing <- results_reg[results_reg$pAdj < 0.05 & results_reg$slope < 0, ]
 
 ---
 
+### maEdges
+
+Combines differential edge results from several independent studies into a
+single meta-analytic estimate per TF-target pair, using either a fixed-effect
+or DerSimonian-Laird random-effects model. Standard errors are recovered from
+each study's `log2FoldChange` and `pValue`.
+
+**Usage:**
+
+```r
+results <- maEdges(
+  edgesList,
+  method = c("random", "fixed"),
+  minStudies = 2
+)
+```
+
+**Parameters:**
+
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| `edgesList` | List of `testEdges()` result data frames, one per study | Required |
+| `method` | Meta-analysis model: `random` or `fixed` | `random` |
+| `minStudies` | Minimum studies with valid values required per TF-target pair | 2 |
+
+**Return value:**
+
+A data frame containing:
+
+| Column | Description |
+|--------|-------------|
+| `tf`, `target` | TF-target pair identifiers |
+| `k` | Number of contributing studies |
+| `log2FoldChange` | Meta-analytic effect size |
+| `se` | Standard error of the effect size |
+| `ciLow`, `ciHigh` | 95% confidence interval bounds |
+| `zStatistic` | Z statistic |
+| `pValue` | Raw p-value |
+| `Q` | Cochran's Q heterogeneity statistic |
+| `iSquared` | I-squared heterogeneity (%) |
+| `tauSquared` | Between-study variance estimate |
+| `pAdj` | Adjusted p-value (Benjamini-Hochberg) |
+
+**Example:**
+
+```r
+# Treat each patient's Tumor vs Normal comparison as a study
+studyA <- testEdges(nets, "two.sample", group1 = "P31--T", group2 = "P31--N")
+studyB <- testEdges(nets, "two.sample", group1 = "P32--T", group2 = "P32--N")
+
+meta <- maEdges(list(studyA, studyB), method = "random")
+```
+
+---
+
+## Functional Enrichment
+
+### enrichEdges
+
+Runs gene set enrichment analysis separately for each transcription factor,
+ranking its target genes by a chosen edge-level statistic (e.g.
+`log2FoldChange`) and testing enrichment with the multilevel `fgsea` algorithm.
+TFs are processed in parallel.
+
+Requires the `fgsea` package (Bioconductor):
+
+```r
+BiocManager::install("fgsea")
+```
+
+**Usage:**
+
+```r
+results <- enrichEdges(
+  edgesDF,
+  geneSets,
+  numericValue,
+  nCores = 3,
+  seed = 1
+)
+```
+
+**Parameters:**
+
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| `edgesDF` | Output from `testEdges()` with `tf`, `target` and `numericValue` columns | Required |
+| `geneSets` | Named list of gene sets | Required |
+| `numericValue` | Name of the `edgesDF` column used as the ranking statistic | Required |
+| `nCores` | Number of parallel workers | 3 |
+| `seed` | Random seed for the parallel enrichment calculations | 1 |
+
+**Return value:**
+
+A data frame containing:
+
+| Column | Description |
+|--------|-------------|
+| `tf` | Transcription factor |
+| `geneSet` | Gene set identifier |
+| `pValue` | Raw enrichment p-value |
+| `pAdj` | Adjusted p-value (Benjamini-Hochberg) |
+| `log2Err` | Expected log2 error of the p-value estimate |
+| `ES` | Enrichment score |
+| `NES` | Normalized enrichment score |
+| `geneSetSize` | Number of set genes found among the targets |
+
+**Example:**
+
+```r
+res <- testEdges(
+  networksDF = nets,
+  testType = "two.sample",
+  group1 = grep("--T$", colnames(nets), value = TRUE),
+  group2 = grep("--N$", colnames(nets), value = TRUE)
+)
+
+geneSets <- list(
+  SetA = c("ACKR1", "ACTA2"),
+  SetB = c("ACTG2", "ADAMDEC1")
+)
+
+enr <- enrichEdges(
+  edgesDF = res,
+  geneSets = geneSets,
+  numericValue = "log2FoldChange"
+)
+```
+
+---
+
+## Visualization
+
+### circosEdges
+
+Draws a circular (Circos) plot of differential TF–target links from a
+`testEdges()` two-sample result. Genes are placed on their genomic coordinates;
+link ribbons are colored continuously by `log2FoldChange` (diverging scale
+centered at zero) and their thickness is proportional to `-log10(pAdj)`. A
+track of per-gene degree (the summed `log2FoldChange` of each gene's outgoing /
+incoming links) is drawn as needles. Links are flagged known vs novel against
+an optional a priori network, and gene labels are styled by role — **TFs in
+bold, targets in *italics*** — showing only the top TFs/targets by absolute
+degree to avoid overlap. By default only the main chromosomes are shown.
+
+Requires the `circlize` package, and `biomaRt` when gene coordinates are
+downloaded automatically:
+
+```r
+install.packages("circlize")
+BiocManager::install("biomaRt")
+```
+
+**Usage:**
+
+```r
+circosEdges(
+  edgesDF,
+  species = "hsapiens_gene_ensembl",
+  geneCoords = NULL,
+  priorNet = NULL,
+  geneSets = NULL,
+  pAdjThreshold = 0.05,
+  log2FCThreshold = 0,
+  maxEdges = 500,
+  colorBy = "log2FoldChange",
+  linkColors = c("#2166AC", "#F7F7F7", "#B2182B"),
+  lwdRange = c(0.5, 4),
+  nmaxTF = 20,
+  nmaxTarget = 20,
+  knownColor = "grey60",
+  novelColor = "#D95F02",
+  geneSetColors = NULL,
+  chromosomes = NULL,
+  mainChromosomesOnly = TRUE,
+  ensemblMirror = "www",
+  transparency = 0.5,
+  legend = TRUE
+)
+```
+
+**Parameters:**
+
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| `edgesDF` | Output from `testEdges()` (two-sample or paired); needs `tf`, `target`, `log2FoldChange`, `pAdj` | Required |
+| `species` | Ensembl dataset for `biomaRt` when `geneCoords` is `NULL` (e.g. `"mmusculus_gene_ensembl"`) | `"hsapiens_gene_ensembl"` |
+| `geneCoords` | Optional data frame (`gene`, `chr`, `start`, `end`) overriding the download for any source | `NULL` |
+| `priorNet` | Optional a priori TF–target network (first two columns); listed links are labeled *known*, others *novel* | `NULL` |
+| `geneSets` | Optional GMT file path or named list of gene vectors to label around the circle | `NULL` |
+| `pAdjThreshold` | Significance cutoff on `pAdj` (falls back to `pValue`) | `0.05` |
+| `log2FCThreshold` | Minimum absolute `log2FoldChange` to draw a link | `0` |
+| `maxEdges` | Cap on links drawn; keeps the most significant | `500` |
+| `colorBy` | `edgesDF` column mapped to the continuous link color ramp | `"log2FoldChange"` |
+| `linkColors` | Length-3 low/mid/high color ramp (diverging for signed values) | blue–white–red |
+| `lwdRange` | Min/max link line width; thickness scales with `-log10(pAdj)` | `c(0.5, 4)` |
+| `nmaxTF`, `nmaxTarget` | Number of TFs/targets to label, by largest absolute out-/in-degree (`NULL`/`Inf` = all) | `20`, `20` |
+| `knownColor`, `novelColor` | Border colors for known vs novel links | grey, orange |
+| `geneSetColors` | Optional named colors for gene sets | auto |
+| `chromosomes` | Optional subset/ordering of chromosomes shown | all present |
+| `mainChromosomesOnly` | Drop unplaced scaffolds/contigs, keeping numbered chromosomes plus X, Y, MT | `TRUE` |
+| `ensemblMirror` | `biomaRt` mirror: `"www"`, `"useast"`, `"asia"` | `"www"` |
+| `transparency` | Link transparency in `[0, 1]` (0 = opaque) | `0.5` |
+| `legend` | Draw legends for effect size, novelty and gene sets | `TRUE` |
+
+**Return value:**
+
+Invisibly, a list with `edges` (plotted links annotated with coordinates and
+`novelty`) and `coords` (the gene coordinate table with `outDegree`, `inDegree`
+and total `degree` columns). Called for the side effect of drawing the plot.
+
+**Example:**
+
+```r
+# Two-sample comparison: Tumor vs Normal
+res <- testEdges(
+  networksDF = nets,
+  testType = "two.sample",
+  group1 = grep("--T$", colnames(nets), value = TRUE),
+  group2 = grep("--N$", colnames(nets), value = TRUE)
+)
+
+# Human coordinates auto-downloaded from Ensembl,
+# links flagged known/novel against a prior network,
+# and hallmark gene sets labeled around the circle
+circosEdges(
+  edgesDF = res,
+  species = "hsapiens_gene_ensembl",
+  priorNet = scorpionTest$tf,
+  geneSets = "hallmark.gmt"
+)
+
+# Offline / other species: supply your own coordinates
+coords <- data.frame(
+  gene = c("TF1", "GENE1"),
+  chr = c("1", "2"),
+  start = c(1000, 5000),
+  end = c(2000, 6000)
+)
+circosEdges(res, geneCoords = coords)
+```
+
+---
+
 ## Citation
 
 If you use SCORPION in your research, please cite:

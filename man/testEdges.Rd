@@ -176,3 +176,9 @@ results_paired <- testEdges(
 )
 }
 }
+\seealso{
+\code{\link{runSCORPION}}, \code{\link{regressEdges}}, \code{\link{maEdges}}, \code{\link{circosEdges}}
+}
+\author{
+Daniel Osorio <daniecos@uio.no>
+}
