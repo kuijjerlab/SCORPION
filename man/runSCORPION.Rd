@@ -247,3 +247,9 @@ nets_batch_corrected <- runSCORPION(
 # 6 AEBP2_EED_EZH2_RBBP4_SUZ12  ACKR1 -0.3274770 -0.34475499 -0.12449908
 }
 }
+\seealso{
+\code{\link{scorpion}}, \code{\link{testEdges}}, \code{\link{regressEdges}}
+}
+\author{
+Daniel Osorio <daniecos@uio.no>
+}

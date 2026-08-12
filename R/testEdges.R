@@ -4,6 +4,7 @@
 #' @description Performs statistical testing of network edges from runSCORPION output.
 #' Supports single-sample tests (testing if edges differ from zero) and two-sample
 #' tests (comparing edges between two groups).
+#' @author Daniel Osorio <daniecos@uio.no>
 #' @param networksDF A data.frame output from \code{\link{runSCORPION}} containing
 #'   TF-target pairs as rows and network identifiers as columns.
 #' @param testType Character specifying the test type. Options are:
@@ -57,6 +58,7 @@
 #'     \item{pAdj: Adjusted p-value}
 #'     \item{For two-sample tests: meanGroup1, meanGroup2, cohensD, log2FoldChange (Group1 - Group2)}
 #'   }
+#' @seealso \code{\link{runSCORPION}}, \code{\link{regressEdges}}, \code{\link{maEdges}}, \code{\link{circosEdges}}
 #' @details
 #' For single-sample tests, the function tests whether the mean edge weight across
 #' replicates significantly differs from zero using a one-sample t-test.
@@ -644,6 +646,7 @@ testEdgesPaired <- function(networksDF, group1, group2, alternative, minLog2FC,
 #' @description Performs linear regression on network edges from runSCORPION output
 #' to identify edges that show significant trends across ordered conditions (e.g.,
 #' disease progression: Normal -> Border -> Tumor).
+#' @author Daniel Osorio <daniecos@uio.no>
 #' @param networksDF A data.frame output from \code{\link{runSCORPION}} containing
 #'   TF-target pairs as rows and network identifiers as columns.
 #' @param orderedGroups A named list where each element is a character vector of
@@ -670,6 +673,7 @@ testEdgesPaired <- function(networksDF, group1, group2, alternative, minLog2FC,
 #'     \item{meanEdge: Overall mean edge weight across all conditions}
 #'     \item{One column per condition showing mean edge weight in that condition}
 #'   }
+#' @seealso \code{\link{runSCORPION}}, \code{\link{testEdges}}
 #' @details
 #' This function performs simple linear regression for each edge, modeling edge weight
 #' as a function of an ordered categorical variable (coded as 0, 1, 2, ... for each

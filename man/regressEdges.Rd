@@ -104,3 +104,9 @@ strong_trends <- results_regression[results_regression$pAdj < 0.05 &
                                      abs(results_regression$meanEdge) > 0.1, ]
 }
 }
+\seealso{
+\code{\link{runSCORPION}}, \code{\link{testEdges}}
+}
+\author{
+Daniel Osorio <daniecos@uio.no>
+}
