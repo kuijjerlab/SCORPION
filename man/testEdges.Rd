@@ -54,9 +54,9 @@ Default 0.}
 
 \item{moderateVariance}{Logical indicating whether to apply SAM-style variance
 moderation. When TRUE, adds a fudge factor (s0, the median of all standard errors)
-to the denominator of the t-statistic. This prevents edges with very small variance
-from producing extreme t-statistics, resulting in volcano plots more similar to
-limma output. Default TRUE.}
+to the denominator of the t-statistic. This prevents edges with very small
+variance from producing extreme t-statistics, resulting in volcano plots more
+similar to limma output. Default TRUE.}
 
 \item{empiricalNull}{Logical indicating whether to estimate the null distribution
 empirically from the observed t-statistics. When TRUE, uses the median and MAD
@@ -81,6 +81,7 @@ A data.frame containing:
     \item{tf: Transcription factor}
     \item{target: Target gene}
     \item{meanEdge: Mean edge weight}
+    \item{SE: Raw, unmoderated sampling standard error}
     \item{tStatistic: Test statistic}
     \item{pValue: Raw p-value}
     \item{pAdj: Adjusted p-value}
@@ -104,6 +105,11 @@ and performs a one-sample t-test on the differences (testing if mean difference
 differs from zero). This is appropriate when samples are matched (e.g., Tumor
 and Normal from the same patient).
 
+The returned \code{SE} is the raw sampling standard error before optional
+SAM-style variance moderation. It is intended for downstream effect-size
+meta-analysis. The moderated SE is used only internally for calculating
+the test statistic and p-value.
+
 Edges are tested independently, and p-values are adjusted for multiple testing
 using the specified method.
 
@@ -125,7 +131,7 @@ nets <- runSCORPION(
 )
 
 # Single-sample test: Test if edges in Tumor region differ from zero
-tumor_nets <- grep("--T$", colnames(nets), value = TRUE)  # T = Tumor
+tumor_nets <- grep("--T$", colnames(nets), value = TRUE)
 results_single <- testEdges(
   networksDF = nets,
   testType = "single",
@@ -133,8 +139,8 @@ results_single <- testEdges(
 )
 
 # Two-sample test: Compare Tumor vs Border regions
-tumor_nets <- grep("--T$", colnames(nets), value = TRUE)  # T = Tumor
-border_nets <- grep("--B$", colnames(nets), value = TRUE)  # B = Border
+tumor_nets <- grep("--T$", colnames(nets), value = TRUE)
+border_nets <- grep("--B$", colnames(nets), value = TRUE)
 results_tumor_vs_border <- testEdges(
   networksDF = nets,
   testType = "two.sample",
@@ -146,7 +152,7 @@ results_tumor_vs_border <- testEdges(
 head(results_tumor_vs_border[order(results_tumor_vs_border$pAdj), ])
 
 # Compare Tumor vs Normal regions
-normal_nets <- grep("--N$", colnames(nets), value = TRUE)  # N = Normal
+normal_nets <- grep("--N$", colnames(nets), value = TRUE)
 results_tumor_vs_normal <- testEdges(
   networksDF = nets,
   testType = "two.sample",
@@ -160,11 +166,10 @@ results_filtered <- testEdges(
   testType = "two.sample",
   group1 = tumor_nets,
   group2 = normal_nets,
-  minLog2FC = 0.5  # Only test edges with |log2FoldChange| >= 0.5
+  minLog2FC = 0.5
 )
 
-# Paired t-test: Compare matched Tumor vs Normal samples (same patient)
-# Ensure columns are ordered by patient: P31--T with P31--N, P32--T with P32--N, etc.
+# Paired t-test: Compare matched Tumor vs Normal samples
 tumor_nets_ordered <- c("P31--T", "P32--T", "P33--T")
 normal_nets_ordered <- c("P31--N", "P32--N", "P33--N")
 results_paired <- testEdges(
@@ -177,7 +182,7 @@ results_paired <- testEdges(
 }
 }
 \seealso{
-\code{\link{runSCORPION}}, \code{\link{regressEdges}}, \code{\link{maEdges}}, \code{\link{circosEdges}}
+\code{\link{runSCORPION}}, \code{\link{maEdges}}, \code{\link{circosEdges}}
 }
 \author{
 Daniel Osorio <daniecos@uio.no>

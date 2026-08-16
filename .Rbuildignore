@@ -4,3 +4,5 @@ LICENSE
 inst/hg38*
 README.md
 tests/*
+^\.positai$
+^\.claude$

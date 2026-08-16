@@ -4,78 +4,42 @@
 \alias{maEdges}
 \title{Meta-analysis of TF-target edges across studies}
 \usage{
-maEdges(edgesList, method = c("random", "fixed"), minStudies = 2L)
+maEdges(
+  edgesList,
+  method = c("random", "fixed"),
+  minStudies = 2L,
+  moderateVariance = TRUE,
+  s0 = NULL
+)
 }
 \arguments{
 \item{edgesList}{A list of data.frames, one per study, typically produced by
 \code{\link{testEdges}}. Each data.frame must contain the columns
-\code{tf}, \code{target}, \code{log2FoldChange} and \code{pValue}.}
+\code{tf}, \code{target}, \code{log2FoldChange} and \code{SE}.}
 
 \item{method}{Meta-analysis model. Either \code{"random"} (DerSimonian-Laird
 random-effects) or \code{"fixed"} (inverse-variance fixed-effect). Default
-\code{"random"}.}
+is \code{"random"}.}
 
 \item{minStudies}{Minimum number of studies with valid numeric information
 required for a TF-target pair to be included. Default 2.}
+
+\item{moderateVariance}{Logical indicating whether to apply SAM-style
+variance moderation to the meta-analysis SE. Default TRUE.}
+
+\item{s0}{Optional variance-moderation fudge factor. If NULL and
+\code{moderateVariance = TRUE}, the median of all valid meta-analysis SEs
+is used.}
 }
 \value{
-A data.frame of meta-analysis results with one row per TF-target pair:
-  \itemize{
-    \item{tf: Transcription factor}
-    \item{target: Target gene}
-    \item{k: Number of contributing studies}
-    \item{log2FoldChange: Meta-analytic effect size}
-    \item{se: Standard error of the effect size}
-    \item{ciLow, ciHigh: Lower and upper bounds of the 95\% confidence interval}
-    \item{zStatistic: Z statistic}
-    \item{pValue: Raw p-value}
-    \item{Q: Cochran's Q heterogeneity statistic}
-    \item{iSquared: I-squared heterogeneity (percentage)}
-    \item{tauSquared: Between-study variance estimate}
-    \item{pAdj: Benjamini-Hochberg adjusted p-value}
-  }
+A data.frame of meta-analysis results with one row per TF-target pair.
 }
 \description{
 Performs a meta-analysis of TF-target edges across multiple studies using
 either a fixed-effect or DerSimonian-Laird random-effects model. Missing or
-non-finite effect sizes and p-values are excluded from the corresponding
+non-finite effect sizes and standard errors are excluded from the corresponding
 study. A TF-target pair is only counted as contributing to a study when both
-its effect size and p-value are valid.
-}
-\details{
-Standard errors are estimated from the reported log2 fold change and
-two-sided p-value. Fixed-effect estimates use inverse-variance weighting.
-Random-effects estimates use DerSimonian-Laird estimates of between-study
-variance.
-
-Missing or non-finite values in \code{log2FoldChange} or \code{pValue} do not
-contribute to the meta-analysis and do not count toward \code{minStudies}.
-TF-target pairs with fewer than \code{minStudies} valid studies are excluded.
-Benjamini-Hochberg correction is performed once across all TF-target
-meta-analysis tests.
-}
-\examples{
-\dontrun{
-data(scorpionTest)
-nets <- runSCORPION(
-  gexMatrix = scorpionTest$gex,
-  tfMotifs = scorpionTest$tf,
-  ppiNet = scorpionTest$ppi,
-  cellsMetadata = scorpionTest$metadata,
-  groupBy = c("donor", "region")
-)
-
-# Two independent comparisons treated as separate studies
-studyA <- testEdges(nets, "two.sample",
-  group1 = "P31--T", group2 = "P31--N")
-studyB <- testEdges(nets, "two.sample",
-  group1 = "P32--T", group2 = "P32--N")
-
-meta <- maEdges(list(studyA, studyB), method = "random")
-}
-}
-\seealso{
-\code{\link{testEdges}}, \code{\link{enrichEdges}}
+its effect size and SE are valid.
 }
 \author{
 Daniel Osorio <daniecos@uio.no>
