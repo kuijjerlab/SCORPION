@@ -401,7 +401,8 @@ testEdgesSingle <- function(networksDF, group1, alternative,
   sd_edge <- sqrt(n_valid / (n_valid - 1) * (row_mean_sq - meanEdge^2))
   
   # Calculate standard error
-  se <- sd_edge / sqrt(n_valid)
+  rawSE <- sd_edge / sqrt(n_valid)
+  se <- rawSE
   
   # Apply SAM-style variance moderation if requested
   if (moderateVariance) {
@@ -634,6 +635,7 @@ testEdgesPaired <- function(networksDF, group1, group2, alternative, minLog2FC,
     cohensD = cohensD,
     log2FoldChange = log2FC,
     meanEdge = meanEdge,
+    SE = rawSE,
     tStatistic = test_stats,
     pValue = pvalues,
     stringsAsFactors = FALSE
