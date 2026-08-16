@@ -487,7 +487,8 @@ testEdgesTwoSample <- function(networksDF, group1, group2, alternative, minLog2F
   var2 <- n2 / (n2 - 1) * (row_mean_sq2 - meanEdge2^2)
   
   # Calculate Welch's t-statistic: t = (mean1 - mean2) / sqrt(var1/n1 + var2/n2)
-  se <- sqrt(var1/n1 + var2/n2)
+  rawSE <- sd_edge / sqrt(n_valid)
+  se <- rawSE
   
   # Apply SAM-style variance moderation if requested
   if (moderateVariance) {
@@ -535,6 +536,7 @@ testEdgesTwoSample <- function(networksDF, group1, group2, alternative, minLog2F
     cohensD = cohensD,
     log2FoldChange = log2FC,
     meanEdge = meanEdge,
+    SE = rawSE,
     tStatistic = test_stats,
     pValue = pvalues,
     stringsAsFactors = FALSE
@@ -592,7 +594,8 @@ testEdgesPaired <- function(networksDF, group1, group2, alternative, minLog2FC,
   sd_diff <- sqrt(n_valid / (n_valid - 1) * (diff_mean_sq - diffMean^2))
   
   # Calculate standard error
-  se <- sd_diff / sqrt(n_valid)
+  rawSE <- sd_edge / sqrt(n_valid)
+  se <- rawSE
   
   # Apply SAM-style variance moderation if requested
   if (moderateVariance) {
