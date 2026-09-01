@@ -419,8 +419,8 @@ decreasing <- results_reg[results_reg$pAdj < 0.05 & results_reg$slope < 0, ]
 
 Combines differential edge results from several independent studies into a
 single meta-analytic estimate per TF-target pair, using either a fixed-effect
-or DerSimonian-Laird random-effects model. Standard errors are recovered from
-each study's `log2FoldChange` and `pValue`.
+or DerSimonian-Laird random-effects model. Standard errors are taken directly
+from each study's `SE` column, as returned by `testEdges()`.
 
 **Usage:**
 
@@ -428,7 +428,10 @@ each study's `log2FoldChange` and `pValue`.
 results <- maEdges(
   edgesList,
   method = c("random", "fixed"),
-  minStudies = 2
+  minStudies = 2,
+  padjustMethod = "BH",
+  moderateVariance = TRUE,
+  s0 = NULL
 )
 ```
 
@@ -439,6 +442,9 @@ results <- maEdges(
 | `edgesList` | List of `testEdges()` result data frames, one per study | Required |
 | `method` | Meta-analysis model: `random` or `fixed` | `random` |
 | `minStudies` | Minimum studies with valid values required per TF-target pair | 2 |
+| `padjustMethod` | Multiple testing correction method (see `p.adjust`) | `BH` |
+| `moderateVariance` | Apply SAM-style variance moderation to the meta-analysis SE | TRUE |
+| `s0` | Variance-moderation fudge factor; `NULL` uses median of valid SEs | NULL |
 
 **Return value:**
 
@@ -449,14 +455,15 @@ A data frame containing:
 | `tf`, `target` | TF-target pair identifiers |
 | `k` | Number of contributing studies |
 | `log2FoldChange` | Meta-analytic effect size |
-| `se` | Standard error of the effect size |
+| `SE` | Standard error of the effect size |
 | `ciLow`, `ciHigh` | 95% confidence interval bounds |
 | `zStatistic` | Z statistic |
 | `pValue` | Raw p-value |
+| `pAdj` | Adjusted p-value (Benjamini-Hochberg) |
 | `Q` | Cochran's Q heterogeneity statistic |
 | `iSquared` | I-squared heterogeneity (%) |
 | `tauSquared` | Between-study variance estimate |
-| `pAdj` | Adjusted p-value (Benjamini-Hochberg) |
+
 
 **Example:**
 
