@@ -133,19 +133,21 @@ runPANDA <- function(motif = NULL, expr = NULL, ppi = NULL, alpha = 0.1, hamming
     cli::cli_alert_warning("Not enough expression conditions detected to calculate correlation. Co-regulation network will be initialized to an identity matrix.")
     geneCoreg <- diag(num.genes)
   } else {
-    if (scale.by.present) {
-      num.positive <- (expr > 0) %*% t((expr > 0))
-      if (assoc.method == "pcNet") {
-        geneCoreg <- pcNet(as.matrix(expr)) * (num.positive / num.conditions)
-      } else {
-        geneCoreg <- fastCorrelation(t(expr), t(expr), method = assoc.method) * (num.positive / num.conditions)
-      }
+    # Densify expr once so the correlation, presence mask, and pcNet all reuse
+    # a single dense copy instead of repeated sparse->dense conversions.
+    expr <- as.matrix(expr)
+    if (assoc.method == "pcNet") {
+      geneCoreg <- pcNet(expr)
     } else {
-      if (assoc.method == "pcNet") {
-        geneCoreg <- pcNet(as.matrix(expr))
-      } else {
-        geneCoreg <- fastCorrelation(t(expr), t(expr), method = assoc.method)
-      }
+      exprT <- t(expr)
+      geneCoreg <- fastCorrelation(exprT, exprT, method = assoc.method)
+    }
+    if (scale.by.present) {
+      # Co-presence counts via symmetric BLAS (tcrossprod/dsyrk) on the dense
+      # presence mask, avoiding the explicit transpose.
+      present <- expr > 0
+      num.positive <- tcrossprod(present)
+      geneCoreg <- geneCoreg * (num.positive / num.conditions)
     }
     if (progress) {
       cli::cli_alert_success("Verified sufficient samples")

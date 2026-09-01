@@ -387,7 +387,8 @@ runSCORPION <- function(gexMatrix,
   rm(gex_chunks)
 
   # Build TF-target pairs from first network
-  first_net <- network_matrices[[1]]
+  # Coerce to a base matrix so as.table works even if a network is an S4 Matrix
+  first_net <- as.matrix(network_matrices[[1]])
   tf_target_df <- as.data.frame(as.table(first_net))[, 1:2]
   colnames(tf_target_df) <- c("tf", "target")
   n_edges <- length(first_net)

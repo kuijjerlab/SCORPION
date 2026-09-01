@@ -86,9 +86,6 @@ pcNet <- function(X,
   # Adding names
   colnames(A) <- rownames(A) <- gNames
 
-  # Making the output a sparse matrix
-  A <- Matrix(A)
-
-  # Return
+  # Return a dense matrix so downstream normalization/iteration stay on BLAS
   return(A)
 }
