@@ -15,17 +15,38 @@
 #'   is \code{"random"}.
 #' @param minStudies Minimum number of studies with valid numeric information
 #'   required for a TF-target pair to be included. Default 2.
+#' @param padjustMethod Character specifying the p-value adjustment method for multiple
+#'   testing correction. See \code{\link[stats]{p.adjust}} for options. Default "BH"
+#'   (Benjamini-Hochberg FDR).
 #' @param moderateVariance Logical indicating whether to apply SAM-style
 #'   variance moderation to the meta-analysis SE. Default TRUE.
 #' @param s0 Optional variance-moderation fudge factor. If NULL and
 #'   \code{moderateVariance = TRUE}, the median of all valid meta-analysis SEs
 #'   is used.
-#' @return A data.frame of meta-analysis results with one row per TF-target pair.
+#' @return A data.frame containing:
+#'   \itemize{
+#'     \item{tf: Transcription factor}
+#'     \item{target: Target gene}
+#'     \item{k: Number of studies contributing to the meta-analysis}
+#'     \item{log2FoldChange: Meta-analytic effect size}
+#'     \item{SE: Meta-analysis standard error}
+#'     \item{ciLow: Lower bound of the 95\% confidence interval}
+#'     \item{ciHigh: Upper bound of the 95\% confidence interval}
+#'     \item{zStatistic: Test statistic}
+#'     \item{pValue: Raw p-value}
+#'     \item{pAdj: Adjusted p-value}
+#'     \item{Q: Cochran's Q heterogeneity statistic}
+#'     \item{iSquared: I-squared heterogeneity (percentage)}
+#'     \item{tauSquared: DerSimonian-Laird between-study variance}
+#'   }
+#' @seealso \code{\link{runSCORPION}}, \code{\link{testEdges}}, \code{\link{circosEdges}}
 #' @export
-#' @importFrom stats p.adjust qnorm pnorm
+#' @importFrom stats p.adjust qnorm pnorm median
+#' @importFrom cli cli_alert_info cli_progress_bar cli_progress_update cli_progress_done
 maEdges <- function(edgesList,
                     method = c("random", "fixed"),
                     minStudies = 2L,
+                    padjustMethod = "BH",
                     moderateVariance = TRUE,
                     s0 = NULL) {
   
@@ -546,7 +567,7 @@ maEdges <- function(edgesList,
         meta_log2FC[valid_effect],
       
       # Raw meta-analysis SE
-      se =
+      SE =
         meta_SE[valid_effect],
       
       ciLow =
@@ -580,7 +601,7 @@ maEdges <- function(edgesList,
     out <-
       out[
         is.finite(out$log2FoldChange) &
-          is.finite(out$se) &
+          is.finite(out$SE) &
           is.finite(out$pValue),
         ,
         drop = FALSE
@@ -663,17 +684,15 @@ maEdges <- function(edgesList,
         target = character(),
         k = integer(),
         log2FoldChange = numeric(),
-        se = numeric(),
-        moderatedSE = numeric(),
-        s0 = numeric(),
+        SE = numeric(),
         ciLow = numeric(),
         ciHigh = numeric(),
         zStatistic = numeric(),
         pValue = numeric(),
+        pAdj = numeric(),
         Q = numeric(),
         iSquared = numeric(),
         tauSquared = numeric(),
-        pAdj = numeric(),
         stringsAsFactors = FALSE
       )
     )
@@ -700,8 +719,8 @@ maEdges <- function(edgesList,
   # ============================================================
   
   valid_se <-
-    is.finite(result$se) &
-    result$se > 0
+    is.finite(result$SE) &
+    result$SE > 0
   
   if (moderateVariance && any(valid_se)) {
     
@@ -709,13 +728,13 @@ maEdges <- function(edgesList,
       
       s0 <-
         median(
-          result$se[valid_se],
+          result$SE[valid_se],
           na.rm = TRUE
         )
     }
     
-    result$moderatedSE <-
-      result$se +
+    moderatedSE <-
+      result$SE +
       s0
     
   } else {
@@ -724,8 +743,8 @@ maEdges <- function(edgesList,
       s0 <- 0
     }
     
-    result$moderatedSE <-
-      result$se
+    moderatedSE <-
+      result$SE
   }
   
   # ============================================================
@@ -734,15 +753,15 @@ maEdges <- function(edgesList,
   
   valid_inference <-
     is.finite(result$log2FoldChange) &
-    is.finite(result$moderatedSE) &
-    result$moderatedSE > 0
+    is.finite(moderatedSE) &
+    moderatedSE > 0
   
   result$zStatistic <-
     NA_real_
   
   result$zStatistic[valid_inference] <-
     result$log2FoldChange[valid_inference] /
-    result$moderatedSE[valid_inference]
+    moderatedSE[valid_inference]
   
   # ============================================================
   # P-values
@@ -772,23 +791,12 @@ maEdges <- function(edgesList,
   result$ciLow[valid_inference] <-
     result$log2FoldChange[valid_inference] -
     qnorm(.975) *
-    result$moderatedSE[valid_inference]
+    moderatedSE[valid_inference]
   
   result$ciHigh[valid_inference] <-
     result$log2FoldChange[valid_inference] +
     qnorm(.975) *
-    result$moderatedSE[valid_inference]
-  
-  # ============================================================
-  # Store the global s0
-  # ============================================================
-  
-  result$s0 <-
-    if (moderateVariance) {
-      s0
-    } else {
-      0
-    }
+    moderatedSE[valid_inference]
   
   # ============================================================
   # BH correction
@@ -797,8 +805,33 @@ maEdges <- function(edgesList,
   result$pAdj <-
     p.adjust(
       result$pValue,
-      method = "BH"
+      method = padjustMethod
     )
+  
+  # ============================================================
+  # Place pAdj next to pValue
+  # ============================================================
+  
+  result <-
+    result[
+      ,
+      c(
+        "tf",
+        "target",
+        "k",
+        "log2FoldChange",
+        "SE",
+        "ciLow",
+        "ciHigh",
+        "zStatistic",
+        "pValue",
+        "pAdj",
+        "Q",
+        "iSquared",
+        "tauSquared"
+      ),
+      drop = FALSE
+    ]
   
   # ============================================================
   # Sort safely
