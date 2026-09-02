@@ -205,12 +205,28 @@ A data frame in wide format where:
 - Columns represent network identifiers (derived from `groupBy` values)
 - Values are edge weights from each network
 
-**Example output:**
+When more than one network type is requested via `outNet` (e.g. `c("regNet", "coregNet", "coopNet")`), an additional leading `edge_type` column is added and the requested networks are stacked in long format. The `edge_type` values map to the requested networks as follows:
+
+| `outNet` | `edge_type` | Node pairs |
+|----------|-------------|------------|
+| `regNet` | `tf-target` | TFs × target genes |
+| `coregNet` | `gene-gene` | genes × genes |
+| `coopNet` | `tf-tf` | TFs × TFs |
+
+**Example output (single network type, default):**
 
 | tf | target | P31--T | P31--B | P31--N | P32--T | ... |
 |----|--------|--------|--------|--------|--------|-----|
 | AATF | ACKR1 | -0.326 | -0.337 | -0.344 | -0.298 | ... |
 | ABL1 | ACKR1 | -0.340 | -0.339 | -0.351 | -0.312 | ... |
+
+**Example output (multiple network types):**
+
+| edge_type | tf | target | P31--T | P31--B | ... |
+|-----------|----|--------|--------|--------|-----|
+| tf-target | AATF | ACKR1 | -0.326 | -0.337 | ... |
+| gene-gene | ACKR1 | ACKR1 | 1.000 | 1.000 | ... |
+| tf-tf | AATF | AATF | 1.000 | 1.000 | ... |
 
 **Examples:**
 
@@ -222,6 +238,16 @@ nets_by_region <- runSCORPION(
   ppiNet = scorpionTest$ppi,
   cellsMetadata = scorpionTest$metadata,
   groupBy = "region"
+)
+
+# Return multiple network types (adds an edge_type column, long format)
+nets_multi <- runSCORPION(
+  gexMatrix = scorpionTest$gex,
+  tfMotifs = scorpionTest$tf,
+  ppiNet = scorpionTest$ppi,
+  cellsMetadata = scorpionTest$metadata,
+  groupBy = "region",
+  outNet = c("regNet", "coregNet", "coopNet")
 )
 
 # Stratify by multiple variables

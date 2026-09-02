@@ -65,7 +65,7 @@ runSCORPION(
 
 \item{nIter}{Sets the maximum number of iterations PANDA can run before exiting. Default Inf.}
 
-\item{outNet}{Character specifying which network to extract. Options include "regNet", "coregNet", "coopNet". Default "regNet".}
+\item{outNet}{Character vector specifying which network(s) to extract. Options include "regNet", "coregNet", "coopNet". Default "regNet". When more than one network is requested, an \code{edge_type} column ("tf-target", "gene-gene", "tf-tf") is added and the networks are stacked in long format.}
 
 \item{zScaling}{Boolean to indicate use of Z-Scores in output. FALSE will use [0,1] scale. Default TRUE.}
 
@@ -78,7 +78,7 @@ runSCORPION(
 \item{filterExpr}{Boolean to indicate whether or not to remove genes with 0 expression across all cells. Default FALSE.}
 }
 \value{
-A data.frame in wide format where rows represent TF-target pairs (union across all networks) and columns represent network identifiers. Cell values are edge weights from the corresponding network.
+A data.frame in wide format where rows represent TF-target pairs (union across all networks) and columns represent network identifiers. Cell values are edge weights from the corresponding network. When multiple network types are requested via \code{outNet}, an additional leading \code{edge_type} column identifies the network each row comes from and the network types are stacked in long format.
 }
 \description{
 Builds per-group regulatory networks by running \code{\link{scorpion}} on subsets of cells defined by \code{cellsMetadata} and combining the resulting networks into a wide-format data frame where each column corresponds to a network.
