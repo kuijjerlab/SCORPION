@@ -402,27 +402,33 @@ runSCORPION <- function(gexMatrix,
 
   if (length(outNet) == 1L) {
     # Single network type: wide format with tf, target and one column per group.
-    # Build TF-target pairs from first network
-    # Coerce to a base matrix so as.table works even if a network is an S4 Matrix
-    first_net <- as.matrix(network_matrices[[1]])
-    # Build TF-target pairs directly from the dimnames instead of materializing
-    # a full contingency table via as.table(); same column-major ordering as
-    # the as.vector() extraction below.
+    # Per-group networks can differ in gene set/ordering (e.g. when
+    # filterExpr = TRUE drops different zero-expression genes per group), so
+    # build the tf/target grid from the union of all networks' dimnames
+    # instead of assuming they all match the first network's shape.
+    all_tfs <- unique(unlist(lapply(network_matrices, rownames)))
+    all_targets <- unique(unlist(lapply(network_matrices, colnames)))
+    n_tf <- length(all_tfs)
+    n_target <- length(all_targets)
     tf_target_df <- expand.grid(
-      tf = rownames(first_net),
-      target = colnames(first_net),
+      tf = all_tfs,
+      target = all_targets,
       KEEP.OUT.ATTRS = FALSE,
       stringsAsFactors = FALSE
     )
-    n_edges <- length(first_net)
-    rm(first_net)
+    n_edges <- n_tf * n_target
 
-    # Stream extraction: pull each network's weights into pre-allocated matrix,
-    # then NULL out the list element immediately to free memory.
+    # Stream extraction: place each network's weights into their global
+    # tf/target positions, then NULL out the list element immediately to
+    # free memory.
     weight_matrix <- matrix(NA_real_, nrow = n_edges, ncol = n_nets)
     colnames(weight_matrix) <- network_ids
     for (k in seq_len(n_nets)) {
-      weight_matrix[, k] <- as.vector(network_matrices[[k]])
+      net_k <- as.matrix(network_matrices[[k]])
+      row_idx <- match(rownames(net_k), all_tfs)
+      col_idx <- match(colnames(net_k), all_targets)
+      global_idx <- outer(row_idx, (col_idx - 1L) * n_tf, FUN = "+")
+      weight_matrix[as.vector(global_idx), k] <- as.vector(net_k)
       network_matrices[k] <- list(NULL)
     }
     rm(network_matrices)
@@ -446,21 +452,29 @@ runSCORPION <- function(gexMatrix,
 
     per_type <- lapply(outNet, function(net_name) {
       # Node pairs are specific to each network type (TFs x genes, genes x
-      # genes or TFs x TFs), so rebuild them from the first group's network.
-      first_net <- as.matrix(network_matrices[[1]][[net_name]])
+      # genes or TFs x TFs). Per-group networks can differ in gene set/order
+      # (e.g. filterExpr = TRUE drops different zero-expression genes per
+      # group), so build the grid from the union of all groups' dimnames.
+      all_tfs <- unique(unlist(lapply(network_matrices, function(net) rownames(net[[net_name]]))))
+      all_targets <- unique(unlist(lapply(network_matrices, function(net) colnames(net[[net_name]]))))
+      n_tf <- length(all_tfs)
+      n_target <- length(all_targets)
       pair_df <- expand.grid(
-        tf = rownames(first_net),
-        target = colnames(first_net),
+        tf = all_tfs,
+        target = all_targets,
         KEEP.OUT.ATTRS = FALSE,
         stringsAsFactors = FALSE
       )
-      n_edges <- length(first_net)
-      rm(first_net)
+      n_edges <- n_tf * n_target
 
       weight_matrix <- matrix(NA_real_, nrow = n_edges, ncol = n_nets)
       colnames(weight_matrix) <- network_ids
       for (k in seq_len(n_nets)) {
-        weight_matrix[, k] <- as.vector(network_matrices[[k]][[net_name]])
+        net_k <- as.matrix(network_matrices[[k]][[net_name]])
+        row_idx <- match(rownames(net_k), all_tfs)
+        col_idx <- match(colnames(net_k), all_targets)
+        global_idx <- outer(row_idx, (col_idx - 1L) * n_tf, FUN = "+")
+        weight_matrix[as.vector(global_idx), k] <- as.vector(net_k)
       }
 
       data.frame(
