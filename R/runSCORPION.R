@@ -262,15 +262,21 @@ runSCORPION <- function(gexMatrix,
 
   # Removing batch effect
   if (removeBatchEffect) {
-    if (showProgress) {
-      cli::cli_alert_success("Correcting for batch effects")
-    }
     if (is.null(batch)) {
       cli::cli_abort('batch is needed for batch effect correction')
     }
-    mean_expr <- apply(gexMatrix, 1, median)
-    gexMatrix <- remove_batch(X = gexMatrix, batch = batch)
-    gexMatrix <- gexMatrix + mean_expr
+    if (length(unique(batch[!is.na(batch)])) < 2) {
+      # A single batch leaves nothing to correct; skip so the per-gene median
+      # is not added to uncorrected data.
+      cli::cli_alert_warning("batch has fewer than two levels; skipping batch effect correction")
+    } else {
+      if (showProgress) {
+        cli::cli_alert_success("Correcting for batch effects")
+      }
+      mean_expr <- apply(gexMatrix, 1, median)
+      gexMatrix <- remove_batch(X = gexMatrix, batch = batch)
+      gexMatrix <- gexMatrix + mean_expr
+    }
   }
   rm(batch)
 

@@ -6,3 +6,4 @@ README.md
 tests/*
 ^\.positai$
 ^\.claude$
+^\.github$
