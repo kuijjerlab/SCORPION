@@ -77,3 +77,29 @@ test_that("runSCORPION() batch effect correction works with valid batch", {
   expect_true(is.data.frame(result))
   expect_true(all(c("tf", "target") %in% colnames(result)))
 })
+
+test_that("runSCORPION() skips batch correction when batch has a single level", {
+  data(scorpionTest)
+
+  args <- list(
+    gexMatrix = scorpionTest$gex,
+    tfMotifs = scorpionTest$tf,
+    ppiNet = scorpionTest$ppi,
+    cellsMetadata = scorpionTest$metadata,
+    groupBy = "region",
+    showProgress = FALSE
+  )
+
+  set.seed(1)
+  uncorrected <- do.call(runSCORPION, args)
+  set.seed(1)
+  expect_message(
+    single_batch <- do.call(runSCORPION, c(args, list(
+      removeBatchEffect = TRUE,
+      batch = rep("b1", ncol(scorpionTest$gex))
+    ))),
+    "fewer than two levels"
+  )
+
+  expect_equal(single_batch, uncorrected)
+})
