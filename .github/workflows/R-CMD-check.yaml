@@ -58,6 +58,8 @@ jobs:
       # R CMD check skips them; run the testthat suite from the repo instead.
       - name: Run testthat suite
         shell: Rscript {0}
+        env:
+          NOT_CRAN: 'true'
         run: |
           options(testthat.progress.max_fails = Inf)
           pkgload::load_all()
