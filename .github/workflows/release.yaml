@@ -27,7 +27,7 @@ jobs:
 
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
-          extra-packages: any::rcmdcheck, any::pkgload
+          extra-packages: any::rcmdcheck
           needs: check
 
       # Tags may be written as 1.2.3, v1.2.3 or v.1.2.3.
@@ -44,13 +44,16 @@ jobs:
 
       # tests/ is excluded from the source tarball via .Rbuildignore, so
       # run the testthat suite from the checkout before releasing.
+      # Install first: the parallel tests start future workers that attach the
+      # installed package, so pkgload::load_all() is not enough.
       - name: Run testthat suite
         shell: Rscript {0}
         env:
           NOT_CRAN: 'true'
         run: |
-          pkgload::load_all()
-          testthat::test_dir("tests/testthat", stop_on_failure = TRUE,
+          install.packages(".", repos = NULL, type = "source")
+          testthat::test_dir("tests/testthat", package = "SCORPION", load_package = "installed",
+                             stop_on_failure = TRUE,
                              reporter = testthat::ProgressReporter$new(show_praise = FALSE))
 
       - name: Build source tarball
