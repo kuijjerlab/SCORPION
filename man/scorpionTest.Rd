@@ -9,12 +9,17 @@ A named list with four elements:
 \describe{
   \item{\code{gex}}{A \code{dgCMatrix} gene expression matrix with 300 genes
     (rows) and 1,954 cells (columns).}
-  \item{\code{tf}}{A \code{data.frame} of transcription factor-target motif
-    pairs from DoRothEA with columns \code{source_genesymbol},
-    \code{target_genesymbol} and \code{weight} (371,738 rows).}
+  \item{\code{tf}}{A \code{data.frame} of transcription factor-target
+    pairs from OmniPath (DoRothEA and CollecTRI) with columns
+    \code{source_genesymbol}, \code{target_genesymbol}, \code{weight}
+    (always 1) and \code{mor} (356,709 rows). \code{mor} is the mode of
+    regulation from OmniPath consensus signs: 1 (activation), -1
+    (repression) or 0 (unsigned, conflicting or not found). TF complexes
+    (e.g. \code{JUN_JUND}) are split into their member genes.}
   \item{\code{ppi}}{A \code{data.frame} of protein-protein interactions with
     columns \code{source_genesymbol}, \code{target_genesymbol} and
-    \code{weight} (4,076 rows).}
+    \code{weight} (4,013 rows). Members of each TF complex are connected
+    pairwise with weight 1.}
   \item{\code{metadata}}{A \code{data.frame} of cell-level annotations with
     columns \code{cell_id}, \code{donor}, \code{region} and \code{cell_type}
     (1,954 rows). Region codes are \code{T} (tumor), \code{B} (border) and
