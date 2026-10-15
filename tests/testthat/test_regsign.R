@@ -14,10 +14,17 @@ halfNormal <- function(z) -stats::qnorm(stats::pnorm(-z, log.p = TRUE) - log(2),
 
 base3 <- run_scorpion(outNet = c("regNet", "coregNet", "coopNet"))
 withSign <- run_scorpion(samples = scorpionTest$metadata$donor[xN])
+# Per-edge details behind regSign (internal; same inputs as scorpion(), so identical results)
+edge_details <- function(gex, prior, regNet, samples, signParams) {
+  SCORPION:::.scorpion_edgeSign(gex, prior, regNet, TRUE, samples, 25, signParams)
+}
+signInfo <- edge_details(scorpionTest$gex[, xN], scorpionTest$tf, withSign$regNet,
+                         scorpionTest$metadata$donor[xN], fastSign)
 
-test_that("regSign is part of the default scorpion() output", {
-  expect_true(all(c("regNet", "coregNet", "coopNet", "regSign", "edgeSign") %in% names(withSign)))
-  expect_false(any(c("regSign", "edgeSign") %in% names(base3)))
+test_that("regSign is the only added output of scorpion()", {
+  expect_identical(names(withSign), c("regNet", "coregNet", "coopNet", "regSign", "numGenes", "numTFs", "numEdges"))
+  expect_false("regSign" %in% names(base3))
+  expect_identical(sort(names(attributes(withSign$regSign))), c("dim", "dimnames"))
 })
 
 test_that("requesting regSign leaves the PANDA networks unchanged", {
@@ -39,33 +46,49 @@ test_that("regSign is d * Phi^-1((1 + Phi(z)) / 2): called direction, else the p
   pr <- pr[pr$tf %in% rownames(rs) & pr$target %in% colnames(rs), ]
   piBar <- sign(mean(pr$mor[pr$mor != 0]))
   d <- ifelse(pr$mor != 0, pr$mor, piBar)
-  e <- withSign$edgeSign
+  e <- signInfo$edges
   called <- e[e$evidence %in% c("data", "data+prior", "data_vs_prior"), ]
   m <- match(paste(pr$tf, pr$target), paste(called$tf, called$target))
   d[!is.na(m)] <- label_direction(called)[m[!is.na(m)]]
   idx <- cbind(pr$tf, pr$target)
-  expect_equal(rs[idx], d * halfNormal(withSign$regNet[idx]))
-  # Pairs outside the prior carry no direction (NA, never 0)
+  expect_equal(as.numeric(rs[idx]), d * halfNormal(withSign$regNet[idx]))
+})
+
+test_that("every edge is directed, weighted and signed; non-prior edges follow TF activity", {
+  rs <- withSign$regSign
+  expect_false(anyNA(rs))
+  expect_false(any(rs == 0))
+  expect_equal(abs(rs), halfNormal(withSign$regNet), check.attributes = FALSE)
+  pr <- SCORPION:::.es_prior(scorpionTest$tf)
+  piBar <- sign(mean(pr$mor[pr$mor != 0]))
   inPrior <- matrix(FALSE, nrow(rs), ncol(rs), dimnames = dimnames(rs))
-  inPrior[idx] <- TRUE
-  expect_true(all(is.na(rs[!inPrior])))
-  expect_false(any(is.na(rs[inPrior])))
+  inPrior[cbind(pr$tf, pr$target)[pr$tf %in% rownames(rs) & pr$target %in% colnames(rs), , drop = FALSE]] <- TRUE
+  # non-prior edges with an association: its sign; otherwise the prior's expected sign
+  a <- matrix(NA_real_, nrow(rs), ncol(rs), dimnames = dimnames(rs))
+  sa <- signInfo$association
+  a[rownames(sa)[rownames(sa) %in% rownames(rs)], colnames(sa)[colnames(sa) %in% colnames(rs)]] <-
+    sa[rownames(sa) %in% rownames(rs), colnames(sa) %in% colnames(rs)]
+  useA <- !inPrior & is.finite(a) & a != 0
+  expect_gt(sum(useA), 0)
+  expect_true(all(sign(rs[useA]) == sign(a[useA])))
+  expect_true(all(sign(rs[!inPrior & !useA]) == piBar))
 })
 
 test_that("the direction step uses single cells while the network uses gammaValue", {
-  e <- withSign$edgeSign
   # single cells: residual degrees of freedom far above the number of super-cells
-  expect_gt(max(e$df, na.rm = TRUE), sum(xN) / 2)
+  expect_gt(max(signInfo$edges$df, na.rm = TRUE), sum(xN) / 2)
+  e10 <- edge_details(scorpionTest$gex[, xN], scorpionTest$tf, withSign$regNet,
+                      scorpionTest$metadata$donor[xN], list(nBoot = 2, gammaValue = 10))
+  expect_lt(max(e10$edges$df, na.rm = TRUE), sum(xN) / 5)
   set.seed(1)
   r <- scorpion(tfMotifs = scorpionTest$tf, gexMatrix = scorpionTest$gex[, xN], ppiNet = scorpionTest$ppi,
                 alphaValue = 0.8, showProgress = FALSE, outNet = c("regNet", "regSign"),
                 signParams = list(nBoot = 2, gammaValue = 10))
-  expect_lt(max(r$edgeSign$df, na.rm = TRUE), sum(xN) / 5)
   expect_identical(r$regNet, base3$regNet)
 })
 
 test_that("regSign direction is the called sign whenever an edge is called", {
-  e <- withSign$edgeSign
+  e <- signInfo$edges
   called <- e[e$evidence %in% c("data", "data+prior", "data_vs_prior"), ]
   skip_if(nrow(called) == 0)
   expect_true(all(sign(withSign$regSign[cbind(called$tf, called$target)]) == label_direction(called)))
@@ -94,7 +117,7 @@ test_that("regSign can be requested without regNet and with an unsigned prior", 
   u <- scorpion(tfMotifs = scorpionTest$tf[, 1:3], gexMatrix = scorpionTest$gex[, xN], ppiNet = scorpionTest$ppi,
                 alphaValue = 0.8, showProgress = FALSE, outNet = c("regNet", "regSign"), signParams = fastSign)
   expect_identical(u$regNet, base3$regNet)
-  expect_identical(colnames(u$edgeSign), colnames(withSign$edgeSign))
+  expect_false(anyNA(u$regSign))
 })
 
 test_that("runSCORPION() returns regSign rows only when requested", {
@@ -117,8 +140,8 @@ test_that("runSCORPION() returns regSign rows only when requested", {
     d
   }
   expect_identical(pairs(sg), pairs(r2[r2$edge_type == "tf-target", ]))
-  expect_true(any(!is.na(sg$T)))
-  expect_false(any(sg$T == 0, na.rm = TRUE))
+  expect_false(anyNA(sg$T))
+  expect_false(any(sg$T == 0))
 })
 
 test_that("invalid regSign arguments are rejected", {
@@ -144,8 +167,10 @@ gexA <- SCORPION:::log_normalize_data(fx$gex[, cellsA])
 
 sergio_regsign <- function(prior, gex = gexA) {
   set.seed(1)
-  scorpion(tfMotifs = prior, gexMatrix = gex, ppiNet = ppiS, gammaValue = 5, showProgress = FALSE,
-           outNet = c("regNet", "regSign"), samples = fx$metadata$donor[cellsA], signParams = list(nBoot = 30))
+  r <- scorpion(tfMotifs = prior, gexMatrix = gex, ppiNet = ppiS, gammaValue = 5, showProgress = FALSE,
+                outNet = c("regNet", "regSign"), samples = fx$metadata$donor[cellsA], signParams = list(nBoot = 30))
+  r$edges <- edge_details(gex, prior, r$regNet, fx$metadata$donor[cellsA], list(nBoot = 30))$edges
+  r
 }
 
 grn_agreement <- function(r) {
@@ -163,7 +188,7 @@ test_that("regSign recovers simulated directions from signed and unsigned priors
   # Called edges (unsigned priors cannot orient TFs whose targets are mostly repressed)
   for (k in 1:2) {
     r <- list(rS, rU)[[k]]
-    e <- r$edgeSign[data_called(r$edgeSign), ]
+    e <- r$edges[data_called(r$edges), ]
     tr <- true_sign(fx, e)
     s <- sign(r$regSign[cbind(e$tf, e$target)])
     expect_gte(sum(!is.na(tr)), 50)
@@ -182,7 +207,7 @@ test_that("regSign carries no direction signal on permuted expression", {
   set.seed(12)
   gexP <- SCORPION:::log_normalize_data(permute_within_donor(fx$gex[, cellsA], fx$metadata$donor[cellsA]))
   r <- sergio_regsign(P0, gex = gexP)
-  expect_lte(sum(data_called(r$edgeSign)), 5)
+  expect_lte(sum(data_called(r$edges)), 5)
   # Without signal, unsigned edges keep the prior's expected sign: (almost) nothing is flipped
   expect_lte(grn_agreement(r)[["negative"]], 0.01)
 })

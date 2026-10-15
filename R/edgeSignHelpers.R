@@ -334,35 +334,65 @@
     sampleBy = if (is.null(samples)) NULL else "sample", normalizeData = FALSE,
     gammaValue = 1, nPC = nPC, minCells = min(30, ncol(gex)), showProgress = FALSE
   ), signParams)
-  es <- tryCatch(do.call(inferEdgeSign, args)$edges, error = function(e) {
+  res <- tryCatch(do.call(inferEdgeSign, args), error = function(e) {
     cli::cli_alert_warning("Edge directions could not be estimated: {conditionMessage(e)}")
     NULL
   })
-  if (!is.null(es)) {
-    es$group <- NULL
+  if (is.null(res) || length(res$activity) == 0) {
+    return(list(edges = NULL, association = NULL))
   }
-  es
+  res$edges$group <- NULL
+  # Association of every expressed gene with every TF's activity, in the same observations
+  # inferEdgeSign() used (same normalization, aggregation and standardization)
+  X <- if (isTRUE(args$normalizeData)) log_normalize_data(args$gexMatrix) else args$gexMatrix
+  donor <- if (is.null(args$sampleBy)) rep("all", ncol(X)) else as.character(meta$sample)
+  agg <- .es_aggregate(X, donor, NULL, args$gammaValue, args$nPC,
+                       if (is.null(args$seed)) 1 else args$seed)
+  association <- NULL
+  if (!is.null(agg)) {
+    std <- .es_standardize(agg$Y, agg$donor, NULL)
+    act <- res$activity[[1]]
+    if (ncol(act) == ncol(std$Z)) {
+      A <- act / pmax(sqrt(rowSums(act^2) / ncol(act)), 1e-12)
+      Zs <- std$Z[std$ok, , drop = FALSE]
+      Zs <- Zs / sqrt(rowSums(Zs^2) / ncol(Zs))
+      association <- (A %*% t(Zs)) / ncol(Zs)
+    }
+  }
+  list(edges = res$edges, association = association)
 }
 
 # Signed regulatory network: d * Phi^{-1}((1 + Phi(z)) / 2) on the z scale, d * Phi(z)
-# on the [0, 1] scale, computed from one network's cells only. The direction d of a prior
-# edge is its label from inferEdgeSign() in this network: the data direction when called
-# (including when it conflicts with the prior), otherwise the prior's expected sign, i.e.
-# its mor when signed and, for unsigned edges, the prevailing sign of the prior's signed
-# edges (+1 when the prior has no signs); this includes self-edges (autoregulation),
-# whose direction cannot be estimated from the data. Pairs absent from the prior are
-# NA. The value carries direction only, never certainty.
-.es_signNetwork <- function(regNet, edgeSign, prior, zScaling) {
+# on the [0, 1] scale, computed from one network's cells only. Every edge gets a direction
+# d, in this order of precedence:
+#   1. prior edge called from the data (inferEdgeSign): the data direction;
+#   2. prior edge not called: the prior's expected sign (its mor when signed, otherwise the
+#      prevailing sign of the prior's signed edges, +1 when the prior has no signs);
+#   3. edge not in the prior: the sign of the target's association with the TF's activity
+#      in this network's cells (activity built from the TF's prior targets);
+#   4. nothing estimable (TF without activity, gene not expressed): the expected sign.
+# The value carries direction only, never certainty.
+.es_signNetwork <- function(regNet, edgeSign, prior, zScaling, association = NULL) {
   piBar <- if (any(prior$mor != 0)) sign(mean(prior$mor[prior$mor != 0])) else 1
   if (piBar == 0) piBar <- 1
-  d <- matrix(NA_real_, nrow(regNet), ncol(regNet), dimnames = dimnames(regNet))
+  d <- matrix(piBar, nrow(regNet), ncol(regNet), dimnames = dimnames(regNet))
+  if (!is.null(association)) {
+    a <- association[intersect(rownames(association), rownames(d)), intersect(colnames(association), colnames(d)), drop = FALSE]
+    ok <- is.finite(a) & a != 0
+    if (any(ok)) {
+      idx <- which(ok, arr.ind = TRUE)
+      cell <- cbind(match(rownames(a)[idx[, 1]], rownames(d)), match(colnames(a)[idx[, 2]], colnames(d)))
+      d[cell] <- sign(a[idx])
+    }
+  }
   pr <- prior[prior$tf %in% rownames(d) & prior$target %in% colnames(d), ]
-  d[cbind(match(pr$tf, rownames(d)), match(pr$target, colnames(d)))] <- ifelse(pr$mor != 0, pr$mor, piBar)
+  cell <- cbind(match(pr$tf, rownames(d)), match(pr$target, colnames(d)))
+  d[cell] <- ifelse(pr$mor != 0, pr$mor, piBar)
   if (!is.null(edgeSign)) {
     e <- edgeSign[edgeSign$evidence %in% c("data", "data+prior", "data_vs_prior") &
                     edgeSign$tf %in% rownames(d) & edgeSign$target %in% colnames(d), ]
-    d[cbind(match(e$tf, rownames(d)), match(e$target, colnames(d)))] <-
-      ifelse(e$label == "conflicting", -e$priorSign, ifelse(e$label == "activating", 1, -1))
+    cell <- cbind(match(e$tf, rownames(d)), match(e$target, colnames(d)))
+    d[cell] <- ifelse(e$label == "conflicting", -e$priorSign, ifelse(e$label == "activating", 1, -1))
   }
   if (zScaling) {
     # Phi^{-1}((1 + Phi(z)) / 2) = -Phi^{-1}(Phi(-z) / 2), computed on the log scale

@@ -162,8 +162,7 @@ A list containing:
 | `regNet` | Regulatory network matrix (TFs × target genes) |
 | `coregNet` | Co-regulation network matrix (genes × genes) |
 | `coopNet` | TF cooperation network matrix (TFs × TFs) |
-| `regSign` | Signed regulatory network (TFs × target genes): `regNet` strength with direction, positive for activation and negative for repression. Directions are called from this network's cells (single cells by default) and otherwise follow the prior's sign (+1 for unsigned priors); NA outside the prior |
-| `edgeSign` | Per-edge direction estimates from `inferEdgeSign()` |
+| `regSign` | Signed regulatory network (TFs × target genes): `regNet` strength with direction, positive for activation and negative for repression, for every edge. Prior edges use directions called from this network's cells (single cells by default), otherwise the prior's sign (+1 for unsigned priors); other edges use the sign of their association with the TF's activity. |
 | `numGenes` | Number of genes in the network |
 | `numTFs` | Number of transcription factors |
 | `numEdges` | Total number of edges in the regulatory network |

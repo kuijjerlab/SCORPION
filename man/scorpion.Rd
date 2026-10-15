@@ -80,17 +80,19 @@ A list describing the inferred networks at convergence:
     \item{regSign: Signed regulatory network (TFs × genes, same dimensions as
       \code{regNet}): \eqn{d \cdot \Phi^{-1}((1 + \Phi(z)) / 2)}, where \eqn{z} is the
       \code{regNet} edge score and \eqn{d} is the edge direction (+1 activating, -1
-      repressing). For a prior edge, \eqn{d} is the direction called from this network's
-      cells by \code{\link{inferEdgeSign}} when the data support one (including when it
-      conflicts with the prior), and otherwise the prior's expected sign: its \code{mor}
-      when signed, and for unsigned edges the prevailing sign of the prior's signed edges
-      (+1 when the prior has no signs). TF activity is estimated from the TF's targets,
-      never from its own mRNA, and everything is computed from this network's cells only.
-      TF-gene pairs absent from the prior are NA. The magnitude grows with the edge score;
-      it carries direction but not certainty, which is reported in \code{edgeSign}. With
-      \code{zScaling = FALSE} it is \eqn{d \cdot \Phi(z)}, in [-1, 1].}
-    \item{edgeSign: The per-edge table from \code{\link{inferEdgeSign}} (returned with
-      \code{regSign}).}
+      repressing). Every edge is signed, using in order of precedence: (1) for a prior edge,
+      the direction called from this network's cells by \code{\link{inferEdgeSign}}
+      (including when it conflicts with the prior); (2) for a prior edge not called, the
+      prior's expected sign: its \code{mor} when signed, otherwise the prevailing sign of
+      the prior's signed edges (+1 when the prior has no signs); (3) for an edge not in the
+      prior, the sign of the target's association with the TF's activity in this network's
+      cells; (4) when nothing can be estimated, the expected sign. TF activity is built
+      from the TF's prior targets, never from its own mRNA, so the prior shapes every sign,
+      and signed priors give the most accurate ones; signs from rules 3-4 are best
+      estimates rather than calls. Each edge is directed (TF to gene), weighted (the
+      magnitude grows with the edge score) and signed. With \code{zScaling = FALSE} it is
+      \eqn{d \cdot \Phi(z)}, in [-1, 1]. Per-edge statistics for prior edges are
+      available from \code{\link{inferEdgeSign}}.}
     \item{numGenes: Number of genes in the network}
     \item{numTFs: Number of transcription factors}
     \item{numEdges: Total number of edges in regulatory network}
@@ -162,7 +164,7 @@ scorpionOutput <- scorpion(
 # Structure of the output.
 str(scorpionOutput)
 
-# List of 8
+# List of 7
 # $ regNet  : num [1:966, 1:281] 0.0583 -0.1429 0.0367 -0.0133 1.868 ...
 # ..- attr(*, "dimnames")=List of 2
 # .. ..$ : chr [1:966] "AATF" "ABL1" "ACSS2" "ACTL6A" ...
@@ -175,11 +177,10 @@ str(scorpionOutput)
 # ..- attr(*, "dimnames")=List of 2
 # .. ..$ : chr [1:966] "AATF" "ABL1" "ACSS2" "ACTL6A" ...
 # .. ..$ : chr [1:966] "AATF" "ABL1" "ACSS2" "ACTL6A" ...
-# $ regSign : num [1:966, 1:281] NA NA NA NA NA ...
+# $ regSign : num [1:966, 1:281] 0.7115 0.5876 0.6977 0.6662 2.1586 ...
 # ..- attr(*, "dimnames")=List of 2
 # .. ..$ : chr [1:966] "AATF" "ABL1" "ACSS2" "ACTL6A" ...
 # .. ..$ : chr [1:281] "ACKR1" "ACTA2" "ACTG2" "ADAMDEC1" ...
-# $ edgeSign:'data.frame':	5942 obs. of  15 variables: (see inferEdgeSign)
 # $ numGenes: int 281
 # $ numTFs  : int 966
 # $ numEdges: int 271446

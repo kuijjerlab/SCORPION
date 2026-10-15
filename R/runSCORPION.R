@@ -29,7 +29,8 @@
 #' @param signParams Optional named list of further arguments passed to
 #'   \code{\link{inferEdgeSign}} for "regSign" (e.g. \code{list(nBoot = 50)}).
 #'   Directions are estimated independently in each network from its own cells (single cells
-#'   by default, whatever \code{gammaValue} is used for the networks); see \code{\link{scorpion}}.
+#'   by default, whatever \code{gammaValue} is used for the networks), and every edge is
+#'   signed; see \code{\link{scorpion}} for the rules.
 #' @return A data.frame in wide format where rows represent TF-target pairs (union across all networks) and columns represent network identifiers. Cell values are edge weights from the corresponding network. When multiple network types are requested via \code{outNet}, an additional leading \code{edge_type} column identifies the network each row comes from and the network types are stacked in long format.
 #' @seealso \code{\link{scorpion}}, \code{\link{testEdges}}, \code{\link{regressEdges}}
 #' @details
