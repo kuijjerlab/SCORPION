@@ -2,10 +2,12 @@
 
 export(circosEdges)
 export(enrichEdges)
+export(inferEdgeSign)
 export(maEdges)
 export(regressEdges)
 export(runSCORPION)
 export(scorpion)
+export(scoreActivity)
 export(testEdges)
 import(Matrix)
 import(cli)

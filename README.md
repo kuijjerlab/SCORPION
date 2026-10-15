@@ -116,12 +116,14 @@ result <- scorpion(
   alphaValue = 0.1,
   hammingValue = 0.001,
   nIter = Inf,
-  outNet = c("regNet", "coregNet", "coopNet"),
+  outNet = c("regNet", "coregNet", "coopNet", "regSign"),
   zScaling = TRUE,
   showProgress = TRUE,
   randomizationMethod = "None",
   scaleByPresent = FALSE,
-  filterExpr = FALSE
+  filterExpr = FALSE,
+  samples = NULL,
+  signParams = list()
 )
 ```
 
@@ -140,12 +142,14 @@ result <- scorpion(
 | `alphaValue` | Weight of prior networks relative to expression data (0–1) | 0.1 |
 | `hammingValue` | Convergence threshold based on Hamming distance | 0.001 |
 | `nIter` | Maximum number of PANDA iterations before stopping | Inf |
-| `outNet` | Networks to return: `regNet`, `coregNet`, and/or `coopNet` | All three |
+| `outNet` | Networks to return: `regNet`, `coregNet`, `coopNet` and/or `regSign` | All four |
 | `zScaling` | Return Z-score normalized edge weights; `FALSE` returns [0,1] scale | TRUE |
 | `showProgress` | Print progress messages during computation | TRUE |
 | `randomizationMethod` | Randomization for null models: `None`, `within.gene`, or `by.gene` | `None` |
 | `scaleByPresent` | Scale correlations by percentage of cells with non-zero expression | FALSE |
 | `filterExpr` | Remove genes with zero expression across all cells before inference | FALSE |
+| `samples` | Sample (donor) of each cell, used only for `regSign` | NULL |
+| `signParams` | List of further arguments for `inferEdgeSign()` used for `regSign` | `list()` |
 
 **Return value:**
 
@@ -156,6 +160,8 @@ A list containing:
 | `regNet` | Regulatory network matrix (TFs × target genes) |
 | `coregNet` | Co-regulation network matrix (genes × genes) |
 | `coopNet` | TF cooperation network matrix (TFs × TFs) |
+| `regSign` | Signed regulatory network (TFs × target genes): `regNet` strength with direction, positive for activation and negative for repression. Directions are called from this network's cells (single cells by default) and otherwise follow the prior's sign (+1 for unsigned priors); NA outside the prior |
+| `edgeSign` | Per-edge direction estimates from `inferEdgeSign()` |
 | `numGenes` | Number of genes in the network |
 | `numTFs` | Number of transcription factors |
 | `numEdges` | Total number of edges in the regulatory network |
@@ -196,6 +202,8 @@ networks <- runSCORPION(
 | `removeBatchEffect` | Perform batch effect correction before network inference | FALSE |
 | `batch` | Factor or vector giving batch assignment for each cell; required if `removeBatchEffect = TRUE` | NULL |
 | `minCells` | Minimum number of cells required per group to build a network | 30 |
+| `sampleBy` | Column of `cellsMetadata` with the sample (donor) of each cell, used only for `regSign` | NULL |
+| `signParams` | List of further arguments for `inferEdgeSign()` used for `regSign` | `list()` |
 
 **Additional parameters:** All `scorpion()` parameters (`computingEngine`, `nCores`, `gammaValue`, `nPC`, `assocMethod`, `alphaValue`, `hammingValue`, `nIter`, `outNet`, `zScaling`, `showProgress`, `randomizationMethod`, `scaleByPresent`, `filterExpr`) can be passed to control network inference behavior. See `scorpion()` documentation above.
 
@@ -213,6 +221,7 @@ When more than one network type is requested via `outNet` (e.g. `c("regNet", "co
 | `regNet` | `tf-target` | TFs × target genes |
 | `coregNet` | `gene-gene` | genes × genes |
 | `coopNet` | `tf-tf` | TFs × TFs |
+| `regSign` | `tf-target-sign` | TFs × target genes (signed regulatory network) |
 
 **Example output (single network type, default):**
 

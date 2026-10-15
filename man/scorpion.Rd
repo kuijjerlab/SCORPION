@@ -16,16 +16,18 @@ scorpion(
   alphaValue = 0.1,
   hammingValue = 0.001,
   nIter = Inf,
-  outNet = c("regNet", "coregNet", "coopNet"),
+  outNet = c("regNet", "coregNet", "coopNet", "regSign"),
   zScaling = TRUE,
   showProgress = TRUE,
   randomizationMethod = "None",
   scaleByPresent = FALSE,
-  filterExpr = FALSE
+  filterExpr = FALSE,
+  samples = NULL,
+  signParams = list()
 )
 }
 \arguments{
-\item{tfMotifs}{A motif dataset (data.frame or matrix) with 3 columns: TF, target gene, and motif score. Pass NULL for co-expression analysis only.}
+\item{tfMotifs}{A motif dataset (data.frame or matrix) with 3 columns: TF, target gene, and motif score, and optionally a fourth column \code{mor} (mode of regulation: 1 activation, -1 repression, 0 unknown) used only for \code{regSign}. Pass NULL for co-expression analysis only.}
 
 \item{gexMatrix}{An expression dataset, with genes in the rows and barcodes (cells) in the columns.}
 
@@ -47,7 +49,7 @@ scorpion(
 
 \item{nIter}{Sets the maximum number of iterations PANDA can run before exiting.}
 
-\item{outNet}{A vector containing which networks to return. Options include "regNet", "coregNet", "coopNet".}
+\item{outNet}{A vector containing which networks to return. Options include "regNet", "coregNet", "coopNet" and "regSign".}
 
 \item{zScaling}{Boolean to indicate use of Z-Scores in output. FALSE will use [0,1] scale.}
 
@@ -59,13 +61,36 @@ scorpion(
 
 \item{filterExpr}{Boolean to remove genes with zero expression across all cells
 before network inference. Default FALSE.}
+
+\item{samples}{Optional vector with the sample (donor) of each cell, used only for
+\code{regSign} to remove sample effects.}
+
+\item{signParams}{Optional named list of further arguments passed to
+\code{\link{inferEdgeSign}} for \code{regSign} (e.g. \code{list(nBoot = 50)}). The
+direction step uses single cells (\code{gammaValue = 1}) by default, independently of
+the \code{gammaValue} used to build the network; set \code{gammaValue} here to change
+it. Prior edges are weighted by this network's \code{regNet} strength.}
 }
 \value{
-A list of 6 elements describing the inferred networks at convergence:
+A list describing the inferred networks at convergence:
   \itemize{
     \item{regNet: Regulatory network matrix (TFs × genes)}
     \item{coregNet: Co-regulation network matrix (genes × genes)}
     \item{coopNet: Cooperation network matrix (TFs × TFs)}
+    \item{regSign: Signed regulatory network (TFs × genes, same dimensions as
+      \code{regNet}): \eqn{d \cdot \Phi^{-1}((1 + \Phi(z)) / 2)}, where \eqn{z} is the
+      \code{regNet} edge score and \eqn{d} is the edge direction (+1 activating, -1
+      repressing). For a prior edge, \eqn{d} is the direction called from this network's
+      cells by \code{\link{inferEdgeSign}} when the data support one (including when it
+      conflicts with the prior), and otherwise the prior's expected sign: its \code{mor}
+      when signed, and for unsigned edges the prevailing sign of the prior's signed edges
+      (+1 when the prior has no signs). TF activity is estimated from the TF's targets,
+      never from its own mRNA, and everything is computed from this network's cells only.
+      TF-gene pairs absent from the prior are NA. The magnitude grows with the edge score;
+      it carries direction but not certainty, which is reported in \code{edgeSign}. With
+      \code{zScaling = FALSE} it is \eqn{d \cdot \Phi(z)}, in [-1, 1].}
+    \item{edgeSign: The per-edge table from \code{\link{inferEdgeSign}} (returned with
+      \code{regSign}).}
     \item{numGenes: Number of genes in the network}
     \item{numTFs: Number of transcription factors}
     \item{numEdges: Total number of edges in regulatory network}
@@ -76,7 +101,10 @@ Constructs gene regulatory networks from single-cell/nuclei RNA-seq data by firs
 applying coarse-graining to reduce sparsity, then running the PANDA (Passing
 Attributes between Networks for Data Assimilation) message-passing algorithm to
 integrate transcription factor motifs, protein-protein interactions, and gene
-expression data into unified regulatory networks.
+expression data into unified regulatory networks. When \code{"regSign"} is requested
+(the default), the regulatory network is also returned with a direction: each edge is
+signed as activating or repressing using \code{\link{inferEdgeSign}}, computed from the
+same cells after PANDA, so \code{regNet} is identical with or without it.
 }
 \examples{
 # Loading example data
@@ -134,22 +162,27 @@ scorpionOutput <- scorpion(
 # Structure of the output.
 str(scorpionOutput)
 
-# List of 6
-# $ regNet  : num [1:963, 1:281] -0.1556 -0.0455 -0.1461 1.6881 0.8746 ...
+# List of 8
+# $ regNet  : num [1:966, 1:281] 0.0583 -0.1429 0.0367 -0.0133 1.868 ...
 # ..- attr(*, "dimnames")=List of 2
-# .. ..$ : chr [1:963] "AATF" "ABL1" "ACSS2" "ADNP" ...
+# .. ..$ : chr [1:966] "AATF" "ABL1" "ACSS2" "ACTL6A" ...
 # .. ..$ : chr [1:281] "ACKR1" "ACTA2" "ACTG2" "ADAMDEC1" ...
-# $ coregNet: num [1:281, 1:281] 2.02e+06 3.84 4.10 -1.26 8.81e-01 ...
+# $ coregNet: num [1:281, 1:281] 1.25e+06 0.672 -0.0285 1.25 0.614 ...
 # ..- attr(*, "dimnames")=List of 2
 # .. ..$ : chr [1:281] "ACKR1" "ACTA2" "ACTG2" "ADAMDEC1" ...
 # .. ..$ : chr [1:281] "ACKR1" "ACTA2" "ACTG2" "ADAMDEC1" ...
-# $ coopNet : num [1:963, 1:963] 1.17e+07 -2.66 8.13 -1.31 4.95 ...
+# $ coopNet : num [1:966, 1:966] 9.25e+06 -4.57 6.24 6.65 -1.63 ...
 # ..- attr(*, "dimnames")=List of 2
-# .. ..$ : chr [1:963] "AATF" "ABL1" "ACSS2" "ADNP" ...
-# .. ..$ : chr [1:963] "AATF" "ABL1" "ACSS2" "ADNP" ...
+# .. ..$ : chr [1:966] "AATF" "ABL1" "ACSS2" "ACTL6A" ...
+# .. ..$ : chr [1:966] "AATF" "ABL1" "ACSS2" "ACTL6A" ...
+# $ regSign : num [1:966, 1:281] NA NA NA NA NA ...
+# ..- attr(*, "dimnames")=List of 2
+# .. ..$ : chr [1:966] "AATF" "ABL1" "ACSS2" "ACTL6A" ...
+# .. ..$ : chr [1:281] "ACKR1" "ACTA2" "ACTG2" "ADAMDEC1" ...
+# $ edgeSign:'data.frame':	5942 obs. of  15 variables: (see inferEdgeSign)
 # $ numGenes: int 281
-# $ numTFs  : int 963
-# $ numEdges: int 270603
+# $ numTFs  : int 966
+# $ numEdges: int 271446
 }
 \seealso{
 \code{\link{runSCORPION}} for building networks across cell groups.

@@ -27,7 +27,9 @@ runSCORPION(
   showProgress = TRUE,
   randomizationMethod = "None",
   scaleByPresent = FALSE,
-  filterExpr = FALSE
+  filterExpr = FALSE,
+  sampleBy = NULL,
+  signParams = list()
 )
 }
 \arguments{
@@ -65,7 +67,7 @@ runSCORPION(
 
 \item{nIter}{Sets the maximum number of iterations PANDA can run before exiting. Default Inf.}
 
-\item{outNet}{Character vector specifying which network(s) to extract. Options include "regNet", "coregNet", "coopNet". Default "regNet". When more than one network is requested, an \code{edge_type} column ("tf-target", "gene-gene", "tf-tf") is added and the networks are stacked in long format.}
+\item{outNet}{Character vector specifying which network(s) to extract. Options include "regNet", "coregNet", "coopNet" and "regSign" (the signed regulatory network, see \code{\link{scorpion}}). Default "regNet". When more than one network is requested, an \code{edge_type} column ("tf-target", "gene-gene", "tf-tf", "tf-target-sign") is added and the networks are stacked in long format.}
 
 \item{zScaling}{Boolean to indicate use of Z-Scores in output. FALSE will use [0,1] scale. Default TRUE.}
 
@@ -76,6 +78,14 @@ runSCORPION(
 \item{scaleByPresent}{Boolean to indicate scaling of correlations by percentage of positive samples. Default FALSE.}
 
 \item{filterExpr}{Boolean to indicate whether or not to remove genes with 0 expression across all cells. Default FALSE.}
+
+\item{sampleBy}{Optional column name in \code{cellsMetadata} identifying the sample (donor)
+of each cell. Used only for "regSign" to remove sample effects within each network.}
+
+\item{signParams}{Optional named list of further arguments passed to
+\code{\link{inferEdgeSign}} for "regSign" (e.g. \code{list(nBoot = 50)}).
+Directions are estimated independently in each network from its own cells (single cells
+by default, whatever \code{gammaValue} is used for the networks); see \code{\link{scorpion}}.}
 }
 \value{
 A data.frame in wide format where rows represent TF-target pairs (union across all networks) and columns represent network identifiers. Cell values are edge weights from the corresponding network. When multiple network types are requested via \code{outNet}, an additional leading \code{edge_type} column identifies the network each row comes from and the network types are stacked in long format.

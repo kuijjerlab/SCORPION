@@ -18,12 +18,18 @@
 #' @param alphaValue Value to be used for update variable in PANDA. Default 0.1.
 #' @param hammingValue Value at which to terminate the process based on Hamming distance. Default 0.001.
 #' @param nIter Sets the maximum number of iterations PANDA can run before exiting. Default Inf.
-#' @param outNet Character vector specifying which network(s) to extract. Options include "regNet", "coregNet", "coopNet". Default "regNet". When more than one network is requested, an \code{edge_type} column ("tf-target", "gene-gene", "tf-tf") is added and the networks are stacked in long format.
+#' @param outNet Character vector specifying which network(s) to extract. Options include "regNet", "coregNet", "coopNet" and "regSign" (the signed regulatory network, see \code{\link{scorpion}}). Default "regNet". When more than one network is requested, an \code{edge_type} column ("tf-target", "gene-gene", "tf-tf", "tf-target-sign") is added and the networks are stacked in long format.
 #' @param zScaling Boolean to indicate use of Z-Scores in output. FALSE will use [0,1] scale. Default TRUE.
 #' @param showProgress Boolean to indicate printing of output for algorithm progress. Default TRUE.
 #' @param randomizationMethod Method by which to randomize gene expression matrix. Default "None". Must be one of "None", "within.gene", "by.gene".
 #' @param scaleByPresent Boolean to indicate scaling of correlations by percentage of positive samples. Default FALSE.
 #' @param filterExpr Boolean to indicate whether or not to remove genes with 0 expression across all cells. Default FALSE.
+#' @param sampleBy Optional column name in \code{cellsMetadata} identifying the sample (donor)
+#'   of each cell. Used only for "regSign" to remove sample effects within each network.
+#' @param signParams Optional named list of further arguments passed to
+#'   \code{\link{inferEdgeSign}} for "regSign" (e.g. \code{list(nBoot = 50)}).
+#'   Directions are estimated independently in each network from its own cells (single cells
+#'   by default, whatever \code{gammaValue} is used for the networks); see \code{\link{scorpion}}.
 #' @return A data.frame in wide format where rows represent TF-target pairs (union across all networks) and columns represent network identifiers. Cell values are edge weights from the corresponding network. When multiple network types are requested via \code{outNet}, an additional leading \code{edge_type} column identifies the network each row comes from and the network types are stacked in long format.
 #' @seealso \code{\link{scorpion}}, \code{\link{testEdges}}, \code{\link{regressEdges}}
 #' @details
@@ -215,7 +221,9 @@ runSCORPION <- function(gexMatrix,
                         showProgress = TRUE,
                         randomizationMethod = "None",
                         scaleByPresent = FALSE,
-                        filterExpr = FALSE
+                        filterExpr = FALSE,
+                        sampleBy = NULL,
+                        signParams = list()
 ) {
   # Input validation
   if (ncol(gexMatrix) != nrow(cellsMetadata)) {
@@ -236,9 +244,16 @@ runSCORPION <- function(gexMatrix,
   if (alphaValue < 0 || alphaValue > 1) {
     cli::cli_abort("alphaValue must be a numeric value between 0 and 1")
   }
-  validNets <- c("regNet", "coregNet", "coopNet")
+  validNets <- c("regNet", "coregNet", "coopNet", "regSign")
   if (length(outNet) < 1 || !all(outNet %in% validNets)) {
     cli::cli_abort("outNet must be one or more of: {paste(validNets, collapse=', ')}")
+  }
+
+  if (!is.null(sampleBy) && !(length(sampleBy) == 1 && sampleBy %in% colnames(cellsMetadata))) {
+    cli::cli_abort("sampleBy must be a column name of cellsMetadata")
+  }
+  if (!is.list(signParams)) {
+    cli::cli_abort("signParams must be a named list")
   }
 
   if (showProgress) {
@@ -293,6 +308,12 @@ runSCORPION <- function(gexMatrix,
   } else {
     cli::cli_abort('groupBy must match cellsMetadata column name')
   }
+  # Sample of each cell (by cell id), used only for regSign
+  cell_sample <- if ("regSign" %in% outNet && !is.null(sampleBy)) {
+    stats::setNames(as.character(cellsMetadata[[sampleBy]]), colnames(gexMatrix))
+  } else {
+    NULL
+  }
   rm(cellsMetadata)
 
   total_net <- length(unique(metadata$network_id))
@@ -337,7 +358,9 @@ runSCORPION <- function(gexMatrix,
       showProgress = FALSE,
       randomizationMethod = randomizationMethod,
       scaleByPresent = scaleByPresent,
-      filterExpr = filterExpr
+      filterExpr = filterExpr,
+      samples = if (is.null(cell_sample)) NULL else unname(cell_sample[colnames(gex_chunk)]),
+      signParams = signParams
     )
 
     # Return a single matrix when one network is requested, otherwise a
@@ -447,7 +470,8 @@ runSCORPION <- function(gexMatrix,
     edge_type_labels <- c(
       regNet = "tf-target",
       coregNet = "gene-gene",
-      coopNet = "tf-tf"
+      coopNet = "tf-tf",
+      regSign = "tf-target-sign"
     )
 
     per_type <- lapply(outNet, function(net_name) {
